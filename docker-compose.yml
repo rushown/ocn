@@ -1,0 +1,75 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ewallet
+      POSTGRES_PASSWORD: ewallet_secret
+      POSTGRES_DB: ewallet_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ewallet"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  seq:
+    image: datalust/seq:latest
+    environment:
+      ACCEPT_EULA: "Y"
+    ports:
+      - "5341:5341"
+      - "8081:80"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    ports:
+      - "5000:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Host=postgres;Database=ewallet_db;Username=ewallet;Password=ewallet_secret"
+      ConnectionStrings__Redis: "redis:6379"
+      Jwt__Secret: "your-256-bit-super-secret-key-change-in-production"
+      Jwt__Issuer: "ewallet-api"
+      Jwt__Audience: "ewallet-client"
+      Serilog__SeqUrl: "http://seq:5341"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  blazor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: blazor
+    ports:
+      - "5001:80"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  redis_data:
