@@ -1,0 +1,182 @@
+@inject IJSRuntime JS
+
+<div class="otp-container" aria-label="One-time password input" role="group">
+    <MudText Typo="Typo.body2" Class="mb-3" Color="Color.Secondary">
+        Enter the 6-digit OTP sent to your registered phone/email
+    </MudText>
+
+    <div class="d-flex gap-2 justify-center mb-3">
+        @for (int i = 0; i < 6; i++)
+        {
+            var index = i;
+            <MudTextField @ref="_inputs[index]"
+                          Value="@_digits[index]"
+                          ValueChanged="@((string v) => OnDigitChanged(index, v))"
+                          Variant="Variant.Outlined"
+                          MaxLength="1"
+                          InputType="InputType.Number"
+                          Class="otp-box"
+                          Style="width: 48px; text-align: center;"
+                          InputMode="InputMode.numeric"
+                          Pattern="[0-9]"
+                          Disabled="@Disabled"
+                          @onkeydown="@((KeyboardEventArgs e) => OnKeyDown(index, e))"
+                          @onpaste="@((ClipboardEventArgs e) => OnPaste(e))"
+                          id="@($"otp-{index}")"
+                          aria-label="@($"OTP digit {index + 1}")" />
+        }
+    </div>
+
+    @if (ShowTimer && _secondsRemaining > 0)
+    {
+        <div class="d-flex align-center justify-center gap-1">
+            <MudIcon Icon="@Icons.Material.Filled.Timer" Size="Size.Small" Color="Color.Secondary" aria-hidden="true" />
+            <MudText Typo="Typo.caption" Color="@(_secondsRemaining <= 30 ? Color.Error : Color.Secondary)">
+                Expires in @FormatTime(_secondsRemaining)
+            </MudText>
+        </div>
+    }
+    else if (ShowTimer && _secondsRemaining == 0)
+    {
+        <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">
+            OTP expired. Please request a new one.
+        </MudAlert>
+    }
+
+    @if (IsError)
+    {
+        <MudAlert Severity="Severity.Error" Dense="true" Class="mt-2">
+            @ErrorMessage
+        </MudAlert>
+    }
+</div>
+
+@code {
+    [Parameter] public EventCallback<string> OnOtpComplete { get; set; }
+    [Parameter] public bool ShowTimer { get; set; } = true;
+    [Parameter] public int TimerSeconds { get; set; } = 300; // 5 minutes
+    [Parameter] public bool Disabled { get; set; } = false;
+    [Parameter] public bool IsError { get; set; } = false;
+    [Parameter] public string ErrorMessage { get; set; } = "Invalid OTP. Please try again.";
+
+    private readonly string[] _digits = new string[6];
+    private readonly MudTextField<string>[] _inputs = new MudTextField<string>[6];
+    private int _secondsRemaining;
+    private System.Threading.Timer? _timer;
+
+    protected override void OnInitialized()
+    {
+        _secondsRemaining = TimerSeconds;
+
+        if (ShowTimer)
+        {
+            _timer = new System.Threading.Timer(async _ =>
+            {
+                if (_secondsRemaining > 0)
+                {
+                    _secondsRemaining--;
+                    await InvokeAsync(StateHasChanged);
+                }
+                else
+                {
+                    _timer?.Dispose();
+                }
+            }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Auto-focus first input
+            await JS.InvokeVoidAsync("document.getElementById('otp-0')?.focus");
+        }
+    }
+
+    private async Task OnDigitChanged(int index, string value)
+    {
+        // Only accept single digits
+        if (value.Length > 1)
+            value = value[^1..];
+
+        if (!string.IsNullOrEmpty(value) && !char.IsDigit(value[0]))
+        {
+            _digits[index] = string.Empty;
+            return;
+        }
+
+        _digits[index] = value;
+
+        // Auto-advance to next field
+        if (!string.IsNullOrEmpty(value) && index < 5)
+        {
+            await JS.InvokeVoidAsync("eval", $"document.getElementById('otp-{index + 1}')?.focus()");
+        }
+
+        await CheckComplete();
+    }
+
+    private async Task OnKeyDown(int index, KeyboardEventArgs e)
+    {
+        if (e.Key == "Backspace" && string.IsNullOrEmpty(_digits[index]) && index > 0)
+        {
+            // Move to previous on backspace
+            _digits[index - 1] = string.Empty;
+            await JS.InvokeVoidAsync("eval", $"document.getElementById('otp-{index - 1}')?.focus()");
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnPaste(ClipboardEventArgs e)
+    {
+        // Handled in JS — we'll read via JS interop
+        try
+        {
+            var text = await JS.InvokeAsync<string>("navigator.clipboard.readText");
+            var digits = text.Where(char.IsDigit).Take(6).ToArray();
+
+            for (int i = 0; i < digits.Length; i++)
+                _digits[i] = digits[i].ToString();
+
+            for (int i = digits.Length; i < 6; i++)
+                _digits[i] = string.Empty;
+
+            StateHasChanged();
+            await CheckComplete();
+        }
+        catch
+        {
+            // Clipboard API may not be available; ignore
+        }
+    }
+
+    private async Task CheckComplete()
+    {
+        if (_digits.All(d => !string.IsNullOrEmpty(d)))
+        {
+            var otp = string.Concat(_digits);
+            await OnOtpComplete.InvokeAsync(otp);
+        }
+    }
+
+    public void Reset()
+    {
+        for (int i = 0; i < 6; i++)
+            _digits[i] = string.Empty;
+        _secondsRemaining = TimerSeconds;
+        StateHasChanged();
+    }
+
+    private static string FormatTime(int seconds)
+    {
+        var m = seconds / 60;
+        var s = seconds % 60;
+        return $"{m}:{s:D2}";
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+    }
+}

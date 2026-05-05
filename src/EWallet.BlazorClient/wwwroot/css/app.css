@@ -1,0 +1,100 @@
+/* ─── Base ──────────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+    font-family: 'Inter', 'Roboto', sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ─── MudBlazor overrides ─────────────────────────────────────────────────── */
+.mud-appbar {
+    backdrop-filter: blur(8px);
+}
+
+.mud-drawer {
+    display: flex;
+    flex-direction: column;
+}
+
+.mud-nav-menu {
+    flex: 1;
+}
+
+/* ─── Balance card ───────────────────────────────────────────────────────── */
+.balance-card {
+    border-radius: 16px !important;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.balance-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(37, 99, 235, 0.25) !important;
+}
+
+/* ─── OTP inputs ─────────────────────────────────────────────────────────── */
+.otp-container .mud-input-root input {
+    text-align: center !important;
+    font-size: 1.5rem !important;
+    font-weight: 700 !important;
+    padding: 8px 0 !important;
+}
+
+.otp-box {
+    flex-shrink: 0;
+}
+
+/* ─── Transaction status chips ───────────────────────────────────────────── */
+.mud-chip.status-completed { background-color: #D1FAE5 !important; color: #065F46 !important; }
+.mud-chip.status-pending   { background-color: #FEF3C7 !important; color: #92400E !important; }
+.mud-chip.status-failed    { background-color: #FEE2E2 !important; color: #991B1B !important; }
+
+/* ─── Wizard stepper ─────────────────────────────────────────────────────── */
+.mud-stepper {
+    background: transparent !important;
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.35); }
+
+/* ─── Error UI ───────────────────────────────────────────────────────────── */
+#blazor-error-ui {
+    background: #FEF2F2;
+    border-top: 1px solid #FECACA;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0,0,0,0.2);
+    color: #7F1D1D;
+    padding: 0.6rem 1.25rem 0.7rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}
+
+/* ─── Responsive helpers ─────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+    .mud-main-content {
+        padding-top: 56px !important;
+    }
+
+    .otp-container .mud-input-root input {
+        font-size: 1.2rem !important;
+    }
+
+    .otp-box {
+        width: 40px !important;
+    }
+}

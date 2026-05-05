@@ -1,0 +1,218 @@
+@page "/dashboard"
+@page "/"
+@attribute [Authorize]
+@using EWallet.BlazorClient.Components
+@using EWallet.BlazorClient.Models
+@using EWallet.BlazorClient.Services
+@using EWallet.BlazorClient.State
+@using Fluxor
+@implements IDisposable
+@inject IState<WalletState> WalletState
+@inject IDispatcher Dispatcher
+@inject ISignalRService SignalR
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Dashboard — EWallet</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true" Style="font-weight: 700;">
+    Good @GetGreeting(), @_firstName! 👋
+</MudText>
+
+<MudGrid Spacing="3">
+    <!-- Balance card (full width on mobile, 2/3 on desktop) -->
+    <MudItem xs="12" md="8">
+        <BalanceCard Balance="@WalletState.Value.Balance"
+                     Currency="@WalletState.Value.Currency"
+                     IsLoading="@WalletState.Value.IsLoading"
+                     LastUpdated="@WalletState.Value.LastUpdated"
+                     ShowActions="true"
+                     OnDeposit="@(() => _showDepositDialog = true)"
+                     OnWithdraw="@(() => _showWithdrawDialog = true)"
+                     OnTransfer="@(() => Navigation.NavigateTo("/transfer"))" />
+    </MudItem>
+
+    <!-- Quick stats -->
+    <MudItem xs="12" md="4">
+        <MudCard Elevation="2" Style="border-radius: 16px; height: 100%;">
+            <MudCardContent>
+                <MudText Typo="Typo.overline" Color="Color.Secondary">THIS MONTH</MudText>
+
+                <div class="d-flex flex-column gap-3 mt-2">
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Color="Color.Success" aria-hidden="true" />
+                        <div>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Total In</MudText>
+                            <MudText Style="font-weight: 600; color: #16A34A;">
+                                @GetMonthlyTotal("Deposit").ToString("N2") @WalletState.Value.Currency
+                            </MudText>
+                        </div>
+                    </div>
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@Icons.Material.Filled.TrendingDown" Color="Color.Error" aria-hidden="true" />
+                        <div>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Total Out</MudText>
+                            <MudText Style="font-weight: 600; color: #DC2626;">
+                                @GetMonthlyTotal("Withdrawal", "Transfer").ToString("N2") @WalletState.Value.Currency
+                            </MudText>
+                        </div>
+                    </div>
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@Icons.Material.Filled.SwapVert" Color="Color.Primary" aria-hidden="true" />
+                        <div>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Transactions</MudText>
+                            <MudText Style="font-weight: 600;">
+                                @(WalletState.Value.Transactions?.TotalCount ?? 0)
+                            </MudText>
+                        </div>
+                    </div>
+                </div>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <!-- Error banner -->
+    @if (WalletState.Value.ErrorMessage is not null)
+    {
+        <MudItem xs="12">
+            <MudAlert Severity="Severity.Error"
+                      ShowCloseIcon="true"
+                      CloseIconClicked="@(() => Dispatcher.Dispatch(new ClearErrorAction()))">
+                @WalletState.Value.ErrorMessage
+            </MudAlert>
+        </MudItem>
+    }
+
+    <!-- Recent transactions -->
+    <MudItem xs="12">
+        <MudCard Elevation="2" Style="border-radius: 16px;">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6" Style="font-weight: 600;">Recent Transactions</MudText>
+                </CardHeaderContent>
+                <CardHeaderActions>
+                    <MudButton Href="/transactions"
+                               Variant="Variant.Text"
+                               Color="Color.Primary"
+                               EndIcon="@Icons.Material.Filled.ArrowForward"
+                               aria-label="View all transactions">
+                        View All
+                    </MudButton>
+                </CardHeaderActions>
+            </MudCardHeader>
+            <MudCardContent>
+                <TransactionList Transactions="@RecentTransactions"
+                                 IsLoading="@WalletState.Value.IsLoading"
+                                 Dense="true" />
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+<!-- Deposit Dialog -->
+<MudDialog @bind-IsVisible="_showDepositDialog" aria-label="Deposit funds dialog">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.AddCircle" Class="mr-2" Color="Color.Success" />
+            Deposit Funds
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudNumericField @bind-Value="_depositAmount"
+                         Label="Amount"
+                         Min="0.01m"
+                         Format="F2"
+                         Variant="Variant.Outlined"
+                         FullWidth="true"
+                         Class="mb-3"
+                         aria-label="Deposit amount" />
+        <MudTextField @bind-Value="_depositDescription"
+                      Label="Description (optional)"
+                      Variant="Variant.Outlined"
+                      FullWidth="true"
+                      aria-label="Deposit description" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _showDepositDialog = false)">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Success"
+                   OnClick="HandleDeposit"
+                   Disabled="@WalletState.Value.IsTransacting"
+                   aria-label="Confirm deposit">
+            Deposit
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool _showDepositDialog;
+    private bool _showWithdrawDialog;
+    private decimal _depositAmount;
+    private string _depositDescription = string.Empty;
+    private string? _firstName;
+
+    private IReadOnlyList<TransactionDto> RecentTransactions =>
+        WalletState.Value.Transactions?.Items.Take(5).ToList() ?? Array.Empty<TransactionDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        WalletState.StateChanged += OnStateChanged;
+
+        Dispatcher.Dispatch(new FetchBalanceAction());
+        Dispatcher.Dispatch(new FetchTransactionsAction(1, 20));
+
+        var user = await AuthService.GetCurrentUserAsync();
+        _firstName = user?.FullName?.Split(' ').FirstOrDefault() ?? "there";
+
+        // Start SignalR
+        var token = await AuthService.GetAccessTokenAsync();
+        if (token is not null)
+        {
+            SignalR.OnBalanceUpdated += OnBalanceUpdated;
+            SignalR.OnTransactionUpdated += OnTransactionUpdated;
+            await SignalR.StartAsync(token);
+        }
+    }
+
+    private void OnStateChanged(object? sender, WalletState state) => InvokeAsync(StateHasChanged);
+
+    private void OnBalanceUpdated(decimal balance, string currency) =>
+        Dispatcher.Dispatch(new BalanceUpdatedFromSignalRAction(balance, currency));
+
+    private void OnTransactionUpdated(Guid txId, string status) =>
+        Dispatcher.Dispatch(new TransactionStatusUpdatedAction(txId, status));
+
+    private async Task HandleDeposit()
+    {
+        Dispatcher.Dispatch(new TransactionStartAction());
+        _showDepositDialog = false;
+
+        var key = $"deposit_{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}_{Guid.NewGuid():N}";
+        // WalletService injected via field in production; simplified here
+        // Dispatcher would handle via effects in full impl
+    }
+
+    private decimal GetMonthlyTotal(params string[] types)
+    {
+        var now = DateTimeOffset.UtcNow;
+        return WalletState.Value.Transactions?.Items
+            .Where(t => t.CreatedAt.Month == now.Month &&
+                        t.CreatedAt.Year == now.Year &&
+                        types.Contains(t.Type))
+            .Sum(t => t.Amount) ?? 0m;
+    }
+
+    private static string GetGreeting() => DateTime.Now.Hour switch
+    {
+        < 12 => "morning",
+        < 18 => "afternoon",
+        _    => "evening"
+    };
+
+    public void Dispose()
+    {
+        WalletState.StateChanged -= OnStateChanged;
+        SignalR.OnBalanceUpdated -= OnBalanceUpdated;
+        SignalR.OnTransactionUpdated -= OnTransactionUpdated;
+    }
+}

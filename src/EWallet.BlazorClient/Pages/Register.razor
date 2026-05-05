@@ -1,0 +1,196 @@
+@page "/register"
+@layout AuthLayout
+@using EWallet.BlazorClient.Models
+@using EWallet.BlazorClient.Services
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Create Account — EWallet</PageTitle>
+
+<MudText Typo="Typo.h5" GutterBottom="true" Style="font-weight: 700;">Create Account</MudText>
+<MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+    Join EWallet — secure digital payments
+</MudText>
+
+@if (_errorMessage is not null)
+{
+    <MudAlert Severity="Severity.Error" Dense="true" Class="mb-3" aria-live="polite">
+        @_errorMessage
+    </MudAlert>
+}
+
+@if (_validationErrors.Count > 0)
+{
+    <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-3">
+        <ul class="mb-0 pl-4">
+            @foreach (var error in _validationErrors)
+            {
+                <li>@error</li>
+            }
+        </ul>
+    </MudAlert>
+}
+
+<MudTextField @bind-Value="_fullName"
+              Label="Full Name"
+              Variant="Variant.Outlined"
+              FullWidth="true"
+              Class="mb-3"
+              Adornment="Adornment.Start"
+              AdornmentIcon="@Icons.Material.Filled.Person"
+              aria-label="Full name"
+              Disabled="@_isLoading" />
+
+<MudTextField @bind-Value="_email"
+              Label="Email Address"
+              InputType="InputType.Email"
+              Variant="Variant.Outlined"
+              FullWidth="true"
+              Class="mb-3"
+              Adornment="Adornment.Start"
+              AdornmentIcon="@Icons.Material.Filled.Email"
+              aria-label="Email address"
+              Disabled="@_isLoading" />
+
+<MudTextField @bind-Value="_phoneNumber"
+              Label="Phone Number"
+              InputType="InputType.Tel"
+              Variant="Variant.Outlined"
+              FullWidth="true"
+              Class="mb-3"
+              Adornment="Adornment.Start"
+              AdornmentIcon="@Icons.Material.Filled.Phone"
+              aria-label="Phone number"
+              Disabled="@_isLoading" />
+
+<MudTextField @bind-Value="_password"
+              Label="Password"
+              InputType="@(_showPassword ? InputType.Text : InputType.Password)"
+              Variant="Variant.Outlined"
+              FullWidth="true"
+              Class="mb-1"
+              Adornment="Adornment.End"
+              AdornmentIcon="@(_showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+              OnAdornmentClick="@(() => _showPassword = !_showPassword)"
+              aria-label="Password"
+              Disabled="@_isLoading" />
+
+<!-- Password strength indicator -->
+@if (!string.IsNullOrEmpty(_password))
+{
+    var (strength, color, label) = GetPasswordStrength(_password);
+    <div class="mb-3">
+        <MudProgressLinear Value="@strength" Color="@color" Rounded="true" Size="Size.Small" Class="mb-1" />
+        <MudText Typo="Typo.caption" Color="@color">Password strength: @label</MudText>
+    </div>
+}
+else
+{
+    <div class="mb-3" />
+}
+
+<MudTextField @bind-Value="_confirmPassword"
+              Label="Confirm Password"
+              InputType="InputType.Password"
+              Variant="Variant.Outlined"
+              FullWidth="true"
+              Class="mb-5"
+              Adornment="Adornment.Start"
+              AdornmentIcon="@(_password == _confirmPassword && !string.IsNullOrEmpty(_confirmPassword) ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Lock)"
+              AdornmentColor="@(_password == _confirmPassword && !string.IsNullOrEmpty(_confirmPassword) ? Color.Success : Color.Default)"
+              aria-label="Confirm password"
+              Disabled="@_isLoading" />
+
+<MudButton Variant="Variant.Filled"
+           Color="Color.Primary"
+           FullWidth="true"
+           Size="Size.Large"
+           OnClick="HandleRegister"
+           Disabled="@_isLoading"
+           aria-label="Create account">
+    @if (_isLoading)
+    {
+        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+        <span>Creating Account…</span>
+    }
+    else
+    {
+        <span>Create Account</span>
+    }
+</MudButton>
+
+<div class="d-flex justify-center mt-4">
+    <MudText Typo="Typo.body2">
+        Already have an account?
+        <MudLink Href="/login" Typo="Typo.body2">Sign in</MudLink>
+    </MudText>
+</div>
+
+@code {
+    private string _fullName = string.Empty;
+    private string _email = string.Empty;
+    private string _phoneNumber = string.Empty;
+    private string _password = string.Empty;
+    private string _confirmPassword = string.Empty;
+    private bool _showPassword;
+    private bool _isLoading;
+    private string? _errorMessage;
+    private List<string> _validationErrors = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (await AuthService.IsAuthenticatedAsync())
+            Navigation.NavigateTo("/dashboard");
+    }
+
+    private async Task HandleRegister()
+    {
+        _validationErrors.Clear();
+        _errorMessage = null;
+
+        if (string.IsNullOrWhiteSpace(_fullName))
+            _validationErrors.Add("Full name is required.");
+        if (string.IsNullOrWhiteSpace(_email))
+            _validationErrors.Add("Email is required.");
+        if (string.IsNullOrWhiteSpace(_phoneNumber))
+            _validationErrors.Add("Phone number is required.");
+        if (_password.Length < 8)
+            _validationErrors.Add("Password must be at least 8 characters.");
+        if (_password != _confirmPassword)
+            _validationErrors.Add("Passwords do not match.");
+
+        if (_validationErrors.Count > 0)
+            return;
+
+        _isLoading = true;
+
+        var result = await AuthService.RegisterAsync(new RegisterRequest(
+            _fullName, _email, _phoneNumber, _password, _confirmPassword));
+
+        _isLoading = false;
+
+        if (result is not null)
+            Navigation.NavigateTo("/dashboard");
+        else
+            _errorMessage = "Registration failed. The email may already be in use.";
+    }
+
+    private static (double strength, Color color, string label) GetPasswordStrength(string password)
+    {
+        int score = 0;
+        if (password.Length >= 8) score++;
+        if (password.Length >= 12) score++;
+        if (password.Any(char.IsUpper)) score++;
+        if (password.Any(char.IsDigit)) score++;
+        if (password.Any(c => !char.IsLetterOrDigit(c))) score++;
+
+        return score switch
+        {
+            <= 1 => (20, Color.Error, "Weak"),
+            2    => (40, Color.Warning, "Fair"),
+            3    => (60, Color.Info, "Good"),
+            4    => (80, Color.Success, "Strong"),
+            _    => (100, Color.Success, "Very Strong")
+        };
+    }
+}

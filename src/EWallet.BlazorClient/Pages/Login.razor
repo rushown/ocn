@@ -1,0 +1,103 @@
+@page "/login"
+@layout AuthLayout
+@using EWallet.BlazorClient.Models
+@using EWallet.BlazorClient.Services
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Sign In — EWallet</PageTitle>
+
+<MudText Typo="Typo.h5" GutterBottom="true" Style="font-weight: 700;">Welcome Back</MudText>
+<MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-5">
+    Sign in to your EWallet account
+</MudText>
+
+@if (_errorMessage is not null)
+{
+    <MudAlert Severity="Severity.Error" Dense="true" Class="mb-4" aria-live="polite">
+        @_errorMessage
+    </MudAlert>
+}
+
+<MudTextField @bind-Value="_email"
+              Label="Email Address"
+              InputType="InputType.Email"
+              Variant="Variant.Outlined"
+              FullWidth="true"
+              Class="mb-3"
+              Adornment="Adornment.Start"
+              AdornmentIcon="@Icons.Material.Filled.Email"
+              aria-label="Email address"
+              Disabled="@_isLoading" />
+
+<MudTextField @bind-Value="_password"
+              Label="Password"
+              InputType="@(_showPassword ? InputType.Text : InputType.Password)"
+              Variant="Variant.Outlined"
+              FullWidth="true"
+              Class="mb-5"
+              Adornment="Adornment.End"
+              AdornmentIcon="@(_showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+              OnAdornmentClick="@(() => _showPassword = !_showPassword)"
+              aria-label="Password"
+              Disabled="@_isLoading" />
+
+<MudButton Variant="Variant.Filled"
+           Color="Color.Primary"
+           FullWidth="true"
+           Size="Size.Large"
+           OnClick="HandleLogin"
+           Disabled="@_isLoading"
+           aria-label="Sign in">
+    @if (_isLoading)
+    {
+        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+        <span>Signing in…</span>
+    }
+    else
+    {
+        <span>Sign In</span>
+    }
+</MudButton>
+
+<div class="d-flex justify-center mt-4">
+    <MudText Typo="Typo.body2">
+        Don't have an account?
+        <MudLink Href="/register" Typo="Typo.body2">Create one</MudLink>
+    </MudText>
+</div>
+
+@code {
+    private string _email = string.Empty;
+    private string _password = string.Empty;
+    private bool _showPassword;
+    private bool _isLoading;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (await AuthService.IsAuthenticatedAsync())
+            Navigation.NavigateTo("/dashboard");
+    }
+
+    private async Task HandleLogin()
+    {
+        if (string.IsNullOrWhiteSpace(_email) || string.IsNullOrWhiteSpace(_password))
+        {
+            _errorMessage = "Please enter your email and password.";
+            return;
+        }
+
+        _isLoading = true;
+        _errorMessage = null;
+
+        var result = await AuthService.LoginAsync(new LoginRequest(_email, _password));
+
+        _isLoading = false;
+
+        if (result is not null)
+            Navigation.NavigateTo("/dashboard");
+        else
+            _errorMessage = "Invalid email or password. Please try again.";
+    }
+}

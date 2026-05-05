@@ -1,0 +1,113 @@
+@using EWallet.BlazorClient.Models
+
+<MudTable Items="@Transactions"
+          Dense="@Dense"
+          Hover="true"
+          Breakpoint="Breakpoint.Sm"
+          Loading="@IsLoading"
+          LoadingProgressColor="Color.Primary"
+          SortLabel="Sort By"
+          aria-label="Transaction list">
+    <HeaderContent>
+        <MudTh>
+            <MudTableSortLabel SortBy="new Func<TransactionDto, object>(t => t.CreatedAt)">
+                Date
+            </MudTableSortLabel>
+        </MudTh>
+        <MudTh>Type</MudTh>
+        <MudTh>
+            <MudTableSortLabel SortBy="new Func<TransactionDto, object>(t => t.Amount)">
+                Amount
+            </MudTableSortLabel>
+        </MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh Class="d-none d-md-table-cell">Description</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Date">
+            <MudText Typo="Typo.body2">
+                @context.CreatedAt.ToLocalTime().ToString("MMM d, yyyy")
+            </MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                @context.CreatedAt.ToLocalTime().ToString("h:mm tt")
+            </MudText>
+        </MudTd>
+
+        <MudTd DataLabel="Type">
+            <MudChip Size="Size.Small"
+                     Icon="@GetTypeIcon(context.Type)"
+                     Color="@GetTypeColor(context.Type)"
+                     Variant="Variant.Outlined">
+                @context.Type
+            </MudChip>
+        </MudTd>
+
+        <MudTd DataLabel="Amount">
+            <MudText Typo="Typo.body1"
+                     Style="@($"font-weight: 600; color: {GetAmountColor(context.Type)}")">
+                @GetAmountSign(context.Type)@context.Amount.ToString("N2") @context.Currency
+            </MudText>
+        </MudTd>
+
+        <MudTd DataLabel="Status">
+            <MudChip Size="Size.Small"
+                     Color="@GetStatusColor(context.Status)"
+                     Variant="Variant.Filled">
+                @context.Status
+            </MudChip>
+        </MudTd>
+
+        <MudTd DataLabel="Description" Class="d-none d-md-table-cell">
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                @(context.Description ?? "—")
+            </MudText>
+        </MudTd>
+    </RowTemplate>
+
+    <NoRecordsContent>
+        <MudText Class="my-8 d-flex flex-column align-center gap-2" Color="Color.Secondary">
+            <MudIcon Icon="@Icons.Material.Filled.ReceiptLong" Style="font-size: 3rem;" aria-hidden="true" />
+            No transactions found
+        </MudText>
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    [Parameter] public IReadOnlyList<TransactionDto> Transactions { get; set; } = Array.Empty<TransactionDto>();
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool Dense { get; set; } = false;
+
+    private static string GetTypeIcon(string type) => type switch
+    {
+        "Deposit"    => Icons.Material.Filled.AddCircle,
+        "Withdrawal" => Icons.Material.Filled.RemoveCircle,
+        "Transfer"   => Icons.Material.Filled.SwapHoriz,
+        _            => Icons.Material.Filled.Receipt
+    };
+
+    private static Color GetTypeColor(string type) => type switch
+    {
+        "Deposit"    => Color.Success,
+        "Withdrawal" => Color.Warning,
+        "Transfer"   => Color.Primary,
+        _            => Color.Default
+    };
+
+    private static string GetAmountColor(string type) => type switch
+    {
+        "Deposit"    => "#16A34A",
+        "Withdrawal" => "#DC2626",
+        "Transfer"   => "#D97706",
+        _            => "inherit"
+    };
+
+    private static string GetAmountSign(string type) => type == "Deposit" ? "+" : "-";
+
+    private static Color GetStatusColor(string status) => status switch
+    {
+        "Completed" => Color.Success,
+        "Pending"   => Color.Warning,
+        "Failed"    => Color.Error,
+        _           => Color.Default
+    };
+}

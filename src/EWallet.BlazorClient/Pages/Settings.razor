@@ -1,0 +1,320 @@
+@page "/settings"
+@attribute [Authorize]
+@using EWallet.BlazorClient.Models
+@using EWallet.BlazorClient.Services
+@inject IAuthService AuthService
+@inject IHttpClientFactory HttpClientFactory
+@inject ISnackbar Snackbar
+
+<PageTitle>Settings — EWallet</PageTitle>
+
+<MudBreadcrumbs Items="_breadcrumbs" Class="mb-4 pa-0" />
+
+<MudText Typo="Typo.h4" Style="font-weight: 700;" GutterBottom="true">
+    <MudIcon Icon="@Icons.Material.Filled.Settings" Class="mr-2" aria-hidden="true" />
+    Account Settings
+</MudText>
+
+<MudGrid Spacing="3">
+    <!-- Profile edit -->
+    <MudItem xs="12" md="6">
+        <MudCard Elevation="2" Style="border-radius: 16px;">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6" Style="font-weight: 600;">Profile Information</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                @if (_user is not null)
+                {
+                    <div class="d-flex flex-column align-center mb-4">
+                        <MudAvatar Color="Color.Primary"
+                                   Style="width: 72px; height: 72px; font-size: 2rem;"
+                                   aria-hidden="true">
+                            @(_user.FullName.Length > 0 ? _user.FullName[0].ToString().ToUpper() : "?")
+                        </MudAvatar>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
+                            @_user.Email
+                        </MudText>
+                    </div>
+
+                    <MudTextField @bind-Value="_editFullName"
+                                  Label="Full Name"
+                                  Variant="Variant.Outlined"
+                                  FullWidth="true"
+                                  Class="mb-3"
+                                  aria-label="Full name" />
+
+                    <MudTextField @bind-Value="_editPhoneNumber"
+                                  Label="Phone Number"
+                                  InputType="InputType.Tel"
+                                  Variant="Variant.Outlined"
+                                  FullWidth="true"
+                                  Class="mb-4"
+                                  aria-label="Phone number" />
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               OnClick="SaveProfile"
+                               Disabled="@_isSavingProfile"
+                               FullWidth="true"
+                               aria-label="Save profile changes">
+                        @if (_isSavingProfile)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            <span>Saving…</span>
+                        }
+                        else
+                        {
+                            <span>Save Changes</span>
+                        }
+                    </MudButton>
+                }
+                else
+                {
+                    <MudSkeleton Height="200px" />
+                }
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <!-- Change password -->
+    <MudItem xs="12" md="6">
+        <MudCard Elevation="2" Style="border-radius: 16px;">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6" Style="font-weight: 600;">Change Password</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudTextField @bind-Value="_currentPassword"
+                              Label="Current Password"
+                              InputType="InputType.Password"
+                              Variant="Variant.Outlined"
+                              FullWidth="true"
+                              Class="mb-3"
+                              aria-label="Current password" />
+
+                <MudTextField @bind-Value="_newPassword"
+                              Label="New Password"
+                              InputType="InputType.Password"
+                              Variant="Variant.Outlined"
+                              FullWidth="true"
+                              Class="mb-3"
+                              aria-label="New password" />
+
+                <MudTextField @bind-Value="_confirmNewPassword"
+                              Label="Confirm New Password"
+                              InputType="InputType.Password"
+                              Variant="Variant.Outlined"
+                              FullWidth="true"
+                              Class="mb-4"
+                              aria-label="Confirm new password" />
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Warning"
+                           OnClick="ChangePassword"
+                           Disabled="@_isChangingPassword"
+                           FullWidth="true"
+                           aria-label="Change password">
+                    @if (_isChangingPassword)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        <span>Changing…</span>
+                    }
+                    else
+                    {
+                        <span>Change Password</span>
+                    }
+                </MudButton>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <!-- Security settings -->
+    <MudItem xs="12" md="6">
+        <MudCard Elevation="2" Style="border-radius: 16px;">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6" Style="font-weight: 600;">Security</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <div class="d-flex align-center justify-space-between mb-4">
+                    <div>
+                        <MudText Typo="Typo.subtitle2" Style="font-weight: 600;">
+                            Two-Factor Authentication
+                        </MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            Add an extra layer of security to your account
+                        </MudText>
+                    </div>
+                    <MudSwitch @bind-Value="_twoFactorEnabled"
+                               Color="Color.Primary"
+                               ValueChanged="Toggle2FA"
+                               aria-label="Toggle two-factor authentication"
+                               T="bool" />
+                </div>
+
+                @if (_twoFactorEnabled)
+                {
+                    <MudAlert Severity="Severity.Success" Dense="true">
+                        2FA is active. Your account is protected.
+                    </MudAlert>
+                }
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <!-- KYC status -->
+    <MudItem xs="12" md="6">
+        <MudCard Elevation="2" Style="border-radius: 16px;">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6" Style="font-weight: 600;">KYC Verification</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                @if (_user is not null)
+                {
+                    var (label, color, icon) = GetKycInfo(_user.KycLevel);
+
+                    <div class="d-flex align-center gap-3 mb-3">
+                        <MudIcon Icon="@icon" Color="@color" Style="font-size: 2.5rem;" aria-hidden="true" />
+                        <div>
+                            <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">
+                                Level @_user.KycLevel — @label
+                            </MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @GetKycDescription(_user.KycLevel)
+                            </MudText>
+                        </div>
+                    </div>
+
+                    <MudProgressLinear Value="@(_user.KycLevel * 33.33)"
+                                       Color="@color"
+                                       Rounded="true"
+                                       Size="Size.Medium"
+                                       Class="mb-3" />
+
+                    @if (_user.KycLevel < 3)
+                    {
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   FullWidth="true"
+                                   aria-label="Upgrade KYC verification">
+                            Upgrade KYC Level
+                        </MudButton>
+                    }
+                }
+                else
+                {
+                    <MudSkeleton Height="120px" />
+                }
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private UserDto? _user;
+    private string _editFullName = string.Empty;
+    private string _editPhoneNumber = string.Empty;
+    private string _currentPassword = string.Empty;
+    private string _newPassword = string.Empty;
+    private string _confirmNewPassword = string.Empty;
+    private bool _twoFactorEnabled;
+    private bool _isSavingProfile;
+    private bool _isChangingPassword;
+
+    private List<BreadcrumbItem> _breadcrumbs = new()
+    {
+        new BreadcrumbItem("Dashboard", href: "/dashboard"),
+        new BreadcrumbItem("Settings", href: "/settings", disabled: true)
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _user = await AuthService.GetCurrentUserAsync();
+        if (_user is not null)
+        {
+            _editFullName = _user.FullName;
+            _editPhoneNumber = _user.PhoneNumber;
+            _twoFactorEnabled = _user.TwoFactorEnabled;
+        }
+    }
+
+    private async Task SaveProfile()
+    {
+        _isSavingProfile = true;
+        try
+        {
+            var http = HttpClientFactory.CreateClient("EWalletApi");
+            var response = await http.PutAsJsonAsync("/api/user/profile",
+                new UpdateProfileRequest(_editFullName, _editPhoneNumber));
+
+            if (response.IsSuccessStatusCode)
+                Snackbar.Add("Profile updated successfully!", Severity.Success);
+            else
+                Snackbar.Add("Failed to update profile. Please try again.", Severity.Error);
+        }
+        finally
+        {
+            _isSavingProfile = false;
+        }
+    }
+
+    private async Task ChangePassword()
+    {
+        if (_newPassword != _confirmNewPassword)
+        {
+            Snackbar.Add("New passwords do not match.", Severity.Warning);
+            return;
+        }
+
+        _isChangingPassword = true;
+        try
+        {
+            var http = HttpClientFactory.CreateClient("EWalletApi");
+            var response = await http.PostAsJsonAsync("/api/user/change-password",
+                new ChangePasswordRequest(_currentPassword, _newPassword, _confirmNewPassword));
+
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Password changed successfully!", Severity.Success);
+                _currentPassword = _newPassword = _confirmNewPassword = string.Empty;
+            }
+            else
+            {
+                Snackbar.Add("Failed to change password. Check your current password.", Severity.Error);
+            }
+        }
+        finally
+        {
+            _isChangingPassword = false;
+        }
+    }
+
+    private async Task Toggle2FA(bool enabled)
+    {
+        _twoFactorEnabled = enabled;
+        Snackbar.Add(enabled ? "2FA enabled." : "2FA disabled.", Severity.Info);
+        // In full impl: call API to enable/disable 2FA
+    }
+
+    private static (string label, Color color, string icon) GetKycInfo(int level) => level switch
+    {
+        0 => ("Unverified", Color.Error, Icons.Material.Filled.ErrorOutline),
+        1 => ("Basic", Color.Warning, Icons.Material.Filled.VerifiedUser),
+        2 => ("Standard", Color.Info, Icons.Material.Filled.Shield),
+        _ => ("Verified", Color.Success, Icons.Material.Filled.Verified)
+    };
+
+    private static string GetKycDescription(int level) => level switch
+    {
+        0 => "No verification. Limited to $100 transactions.",
+        1 => "Email verified. Up to $1,000 per transaction.",
+        2 => "ID verified. Up to $10,000 per transaction.",
+        _ => "Fully verified. No transaction limits."
+    };
+}

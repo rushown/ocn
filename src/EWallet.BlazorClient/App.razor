@@ -1,0 +1,66 @@
+@using EWallet.BlazorClient.Layout
+@using Fluxor.Blazor.Web.Components
+
+<Fluxor.Blazor.Web.StoreInitializer />
+
+<MudThemeProvider @ref="_themeProvider" @bind-IsDarkMode="_isDarkMode" Theme="_theme" />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+            <NotAuthorized>
+                <RedirectToLogin />
+            </NotAuthorized>
+        </AuthorizeRouteView>
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <PageTitle>Not found</PageTitle>
+        <LayoutView Layout="@typeof(MainLayout)">
+            <MudContainer MaxWidth="MaxWidth.Small" Class="d-flex flex-column align-center justify-center" Style="height:60vh;">
+                <MudText Typo="Typo.h3" GutterBottom="true">404</MudText>
+                <MudText Class="mb-4">Page not found.</MudText>
+                <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary">Go Home</MudButton>
+            </MudContainer>
+        </LayoutView>
+    </NotFound>
+</Router>
+
+@code {
+    private MudThemeProvider _themeProvider = null!;
+    private bool _isDarkMode = false;
+
+    private readonly MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#2563EB",
+            Secondary = "#7C3AED",
+            AppbarBackground = "#1E3A8A",
+            Background = "#F8FAFC",
+            Surface = "#FFFFFF",
+            Success = "#16A34A",
+            Error = "#DC2626",
+            Warning = "#D97706"
+        },
+        PaletteDark = new PaletteDark
+        {
+            Primary = "#3B82F6",
+            Secondary = "#8B5CF6",
+            AppbarBackground = "#0F172A",
+            Background = "#0F172A",
+            Surface = "#1E293B",
+            Success = "#22C55E",
+            Error = "#EF4444",
+            Warning = "#F59E0B"
+        },
+        Typography = new Typography
+        {
+            Default = new DefaultTypography { FontFamily = ["Inter", "Roboto", "sans-serif"] },
+            H3 = new H3Typography { FontWeight = 700 },
+            H5 = new H5Typography { FontWeight = 600 }
+        }
+    };
+}

@@ -1,0 +1,78 @@
+@using EWallet.BlazorClient.Models
+
+<MudCard Elevation="4" Class="balance-card" Style="border-radius: 16px; overflow: hidden;">
+    <div style="background: linear-gradient(135deg, #1E3A8A 0%, #2563EB 100%); padding: 0 0 2px 0;">
+        <MudCardContent Style="color: white;">
+            <div class="d-flex justify-space-between align-start">
+                <div>
+                    <MudText Typo="Typo.overline" Style="opacity: 0.8; color: white; letter-spacing: 2px;">
+                        AVAILABLE BALANCE
+                    </MudText>
+
+                    @if (IsLoading)
+                    {
+                        <MudSkeleton Height="56px" Width="220px" Style="background: rgba(255,255,255,0.2);" />
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.h3" Style="font-weight: 700; color: white; line-height: 1.2;" aria-live="polite">
+                            @Balance.ToString("N2") <span style="font-size: 1.2rem; opacity: 0.9;">@Currency</span>
+                        </MudText>
+                    }
+
+                    @if (LastUpdated.HasValue && !IsLoading)
+                    {
+                        <MudText Typo="Typo.caption" Style="opacity: 0.7; color: white;" Class="mt-1">
+                            Updated @LastUpdated.Value.ToLocalTime().ToString("MMM d, h:mm tt")
+                        </MudText>
+                    }
+                </div>
+
+                <MudIcon Icon="@Icons.Material.Filled.AccountBalanceWallet"
+                         Style="font-size: 3rem; opacity: 0.3; color: white;"
+                         aria-hidden="true" />
+            </div>
+        </MudCardContent>
+    </div>
+
+    @if (ShowActions)
+    {
+        <MudCardActions Class="gap-2 px-4 py-3">
+            <MudButton StartIcon="@Icons.Material.Filled.Add"
+                       Variant="Variant.Filled"
+                       Color="Color.Success"
+                       Size="Size.Small"
+                       OnClick="@(() => OnDeposit.InvokeAsync())"
+                       aria-label="Deposit funds">
+                Deposit
+            </MudButton>
+            <MudButton StartIcon="@Icons.Material.Filled.Remove"
+                       Variant="Variant.Outlined"
+                       Color="Color.Warning"
+                       Size="Size.Small"
+                       OnClick="@(() => OnWithdraw.InvokeAsync())"
+                       aria-label="Withdraw funds">
+                Withdraw
+            </MudButton>
+            <MudButton StartIcon="@Icons.Material.Filled.SwapHoriz"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Size="Size.Small"
+                       OnClick="@(() => OnTransfer.InvokeAsync())"
+                       aria-label="Transfer funds">
+                Transfer
+            </MudButton>
+        </MudCardActions>
+    }
+</MudCard>
+
+@code {
+    [Parameter] public decimal Balance { get; set; }
+    [Parameter] public string Currency { get; set; } = "USD";
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public DateTimeOffset? LastUpdated { get; set; }
+    [Parameter] public bool ShowActions { get; set; } = false;
+    [Parameter] public EventCallback OnDeposit { get; set; }
+    [Parameter] public EventCallback OnWithdraw { get; set; }
+    [Parameter] public EventCallback OnTransfer { get; set; }
+}

@@ -1,0 +1,73 @@
+@using EWallet.BlazorClient.Services
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<MudNavMenu>
+    <MudNavLink Href="/dashboard"
+                Icon="@Icons.Material.Filled.Dashboard"
+                Match="NavLinkMatch.All"
+                aria-label="Dashboard">
+        Dashboard
+    </MudNavLink>
+
+    <MudNavLink Href="/transfer"
+                Icon="@Icons.Material.Filled.SwapHoriz"
+                aria-label="Transfer funds">
+        Transfer
+    </MudNavLink>
+
+    <MudNavLink Href="/transactions"
+                Icon="@Icons.Material.Filled.ReceiptLong"
+                aria-label="Transaction history">
+        Transactions
+    </MudNavLink>
+
+    <MudNavLink Href="/settings"
+                Icon="@Icons.Material.Filled.Settings"
+                aria-label="Account settings">
+        Settings
+    </MudNavLink>
+</MudNavMenu>
+
+<!-- User info + logout at bottom -->
+<div class="pa-4 mt-auto" style="margin-top: auto;">
+    <MudDivider Class="mb-4" />
+
+    @if (_user is not null)
+    {
+        <div class="d-flex align-center gap-3 mb-3">
+            <MudAvatar Color="Color.Primary" Size="Size.Small" aria-hidden="true">
+                @(_user.FullName.Length > 0 ? _user.FullName[0].ToString().ToUpper() : "?")
+            </MudAvatar>
+            <div>
+                <MudText Typo="Typo.body2" Style="font-weight: 600;">@_user.FullName</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@_user.Email</MudText>
+            </div>
+        </div>
+    }
+
+    <MudButton StartIcon="@Icons.Material.Filled.Logout"
+               Variant="Variant.Outlined"
+               Color="Color.Error"
+               FullWidth="true"
+               OnClick="HandleLogout"
+               aria-label="Sign out">
+        Sign Out
+    </MudButton>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnLogout { get; set; }
+
+    private Models.UserDto? _user;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _user = await AuthService.GetCurrentUserAsync();
+    }
+
+    private async Task HandleLogout()
+    {
+        await OnLogout.InvokeAsync();
+    }
+}

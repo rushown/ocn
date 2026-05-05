@@ -1,0 +1,87 @@
+@using EWallet.BlazorClient.Services
+@using EWallet.BlazorClient.State
+@using Fluxor
+@inherits LayoutComponentBase
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject IDispatcher Dispatcher
+
+<MudLayout>
+    <!-- App Bar -->
+    <MudAppBar Elevation="1" Dense="false">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                       Color="Color.Inherit"
+                       Edge="Edge.Start"
+                       OnClick="ToggleDrawer"
+                       aria-label="Toggle navigation menu" />
+
+        <MudText Typo="Typo.h6" Class="ml-2 d-none d-sm-flex">
+            <MudIcon Icon="@Icons.Material.Filled.AccountBalanceWallet" Class="mr-2" />
+            EWallet
+        </MudText>
+
+        <MudSpacer />
+
+        <!-- Theme toggle -->
+        <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                       Color="Color.Inherit"
+                       OnClick="ToggleTheme"
+                       aria-label="Toggle theme" />
+
+        <!-- User avatar -->
+        @if (_userName is not null)
+        {
+            <MudChip Icon="@Icons.Material.Filled.Person"
+                     Color="Color.Primary"
+                     Class="mx-2 d-none d-sm-flex"
+                     aria-label="Current user">
+                @_userName
+            </MudChip>
+        }
+    </MudAppBar>
+
+    <!-- Sidebar drawer -->
+    <MudDrawer @bind-Open="_drawerOpen"
+               Elevation="2"
+               Variant="@DrawerVariant.Responsive"
+               ClipMode="DrawerClipMode.Always"
+               aria-label="Main navigation">
+        <MudDrawerHeader>
+            <MudText Typo="Typo.subtitle1" Class="d-flex align-center gap-2">
+                <MudIcon Icon="@Icons.Material.Filled.AccountBalanceWallet" Color="Color.Primary" />
+                <strong>EWallet</strong>
+            </MudText>
+        </MudDrawerHeader>
+
+        <NavMenu OnLogout="HandleLogout" />
+    </MudDrawer>
+
+    <!-- Main content -->
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.Large" Class="pt-4 pb-8">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool _drawerOpen = true;
+    private bool _isDarkMode = false;
+    private string? _userName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = await AuthService.GetCurrentUserAsync();
+        _userName = user?.FullName ?? user?.Email;
+    }
+
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    private void ToggleTheme() => _isDarkMode = !_isDarkMode;
+
+    private async Task HandleLogout()
+    {
+        await AuthService.LogoutAsync();
+        Navigation.NavigateTo("/login");
+    }
+}

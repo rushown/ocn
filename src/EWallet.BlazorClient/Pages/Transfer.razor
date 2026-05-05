@@ -1,0 +1,65 @@
+@page "/transfer"
+@attribute [Authorize]
+@using EWallet.BlazorClient.Components
+@using EWallet.BlazorClient.Models
+@inject NavigationManager Navigation
+
+<PageTitle>Transfer — EWallet</PageTitle>
+
+<MudBreadcrumbs Items="_breadcrumbs" Class="mb-4 pa-0" />
+
+<MudText Typo="Typo.h4" GutterBottom="true" Style="font-weight: 700;">
+    <MudIcon Icon="@Icons.Material.Filled.SwapHoriz" Class="mr-2" aria-hidden="true" />
+    Transfer Funds
+</MudText>
+<MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
+    Send money to any EWallet user instantly.
+</MudText>
+
+<MudGrid>
+    <MudItem xs="12" md="8">
+        <MudCard Elevation="3" Style="border-radius: 16px;">
+            <MudCardContent Class="pa-6">
+                <TransferWizard OnTransferComplete="OnTransferComplete" />
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <MudItem xs="12" md="4">
+        <MudCard Elevation="2" Style="border-radius: 16px;">
+            <MudCardContent>
+                <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" GutterBottom="true">
+                    Transfer Info
+                </MudText>
+
+                <MudList Dense="true">
+                    <MudListItem Icon="@Icons.Material.Filled.Speed" IconColor="Color.Primary">
+                        <MudText Typo="Typo.body2">Instant transfers between EWallet accounts</MudText>
+                    </MudListItem>
+                    <MudListItem Icon="@Icons.Material.Filled.MoneyOff" IconColor="Color.Success">
+                        <MudText Typo="Typo.body2">Zero fees in this phase</MudText>
+                    </MudListItem>
+                    <MudListItem Icon="@Icons.Material.Filled.Security" IconColor="Color.Info">
+                        <MudText Typo="Typo.body2">OTP required for transfers over $500</MudText>
+                    </MudListItem>
+                    <MudListItem Icon="@Icons.Material.Filled.Replay" IconColor="Color.Warning">
+                        <MudText Typo="Typo.body2">Idempotent — safe to retry on network errors</MudText>
+                    </MudListItem>
+                </MudList>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private List<BreadcrumbItem> _breadcrumbs = new()
+    {
+        new BreadcrumbItem("Dashboard", href: "/dashboard"),
+        new BreadcrumbItem("Transfer", href: "/transfer", disabled: true)
+    };
+
+    private void OnTransferComplete(TransactionDto tx)
+    {
+        // Navigation or additional logic after transfer
+    }
+}

@@ -1,0 +1,375 @@
+@using EWallet.BlazorClient.Models
+@using EWallet.BlazorClient.Services
+@using EWallet.BlazorClient.State
+@using Fluxor
+@inject IWalletService WalletService
+@inject IDispatcher Dispatcher
+@inject IState<WalletState> WalletState
+
+<MudStepper @ref="_stepper"
+            ActiveStep="@_activeStep"
+            NonLinear="false"
+            Class="mb-4">
+
+    <!-- Step 1: Recipient -->
+    <MudStep Title="Recipient" Icon="@Icons.Material.Filled.Person">
+        <MudText Typo="Typo.h6" GutterBottom="true">Find Recipient</MudText>
+
+        <MudTextField @bind-Value="_receiverWalletIdStr"
+                      Label="Receiver Wallet ID"
+                      Placeholder="Enter wallet ID (UUID)"
+                      Adornment="Adornment.End"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      OnAdornmentClick="LookupRecipient"
+                      Variant="Variant.Outlined"
+                      FullWidth="true"
+                      Class="mb-3"
+                      aria-label="Receiver wallet ID" />
+
+        @if (_isLookingUp)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-3" />
+        }
+
+        @if (_recipientInfo is not null)
+        {
+            <MudPaper Outlined="true" Class="pa-3 mb-3" Style="border-radius: 8px; border-color: #16A34A;">
+                <div class="d-flex align-center gap-3">
+                    <MudAvatar Color="Color.Success" aria-hidden="true">
+                        @_recipientInfo.OwnerName[0].ToString().ToUpper()
+                    </MudAvatar>
+                    <div>
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">@_recipientInfo.OwnerName</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            Wallet: @_recipientInfo.WalletId.ToString()[..8]... · @_recipientInfo.Currency
+                        </MudText>
+                    </div>
+                    <MudSpacer />
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" aria-hidden="true" />
+                </div>
+            </MudPaper>
+        }
+
+        @if (_lookupError is not null)
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mb-3">@_lookupError</MudAlert>
+        }
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="GoToStep2"
+                   Disabled="@(_recipientInfo is null)"
+                   EndIcon="@Icons.Material.Filled.ArrowForward"
+                   aria-label="Continue to amount">
+            Continue
+        </MudButton>
+    </MudStep>
+
+    <!-- Step 2: Amount -->
+    <MudStep Title="Amount" Icon="@Icons.Material.Filled.AttachMoney">
+        <MudText Typo="Typo.h6" GutterBottom="true">Enter Amount</MudText>
+
+        <MudSelect @bind-Value="_currency"
+                   Label="Currency"
+                   Variant="Variant.Outlined"
+                   Class="mb-3"
+                   aria-label="Currency selector">
+            <MudSelectItem Value="@("USD")">🇺🇸 USD</MudSelectItem>
+            <MudSelectItem Value="@("EUR")">🇪🇺 EUR</MudSelectItem>
+            <MudSelectItem Value="@("GBP")">🇬🇧 GBP</MudSelectItem>
+        </MudSelect>
+
+        <MudNumericField @bind-Value="_amount"
+                         Label="Amount"
+                         Min="0.01m"
+                         Format="F2"
+                         Adornment="Adornment.Start"
+                         AdornmentText="@_currency"
+                         Variant="Variant.Outlined"
+                         FullWidth="true"
+                         Class="mb-3"
+                         aria-label="Transfer amount" />
+
+        <MudTextField @bind-Value="_description"
+                      Label="Description (optional)"
+                      MaxLength="200"
+                      Variant="Variant.Outlined"
+                      FullWidth="true"
+                      Class="mb-3"
+                      aria-label="Transfer description" />
+
+        <MudPaper Outlined="true" Class="pa-3 mb-4" Style="border-radius: 8px;">
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Fee Summary</MudText>
+            <div class="d-flex justify-space-between">
+                <MudText>Transfer Amount</MudText>
+                <MudText Style="font-weight: 600;">@_amount.ToString("N2") @_currency</MudText>
+            </div>
+            <div class="d-flex justify-space-between">
+                <MudText>Fee</MudText>
+                <MudText Color="Color.Success">FREE</MudText>
+            </div>
+            <MudDivider Class="my-1" />
+            <div class="d-flex justify-space-between">
+                <MudText Style="font-weight: 600;">Total</MudText>
+                <MudText Style="font-weight: 700;">@_amount.ToString("N2") @_currency</MudText>
+            </div>
+        </MudPaper>
+
+        <div class="d-flex gap-2">
+            <MudButton Variant="Variant.Outlined"
+                       OnClick="GoToStep1"
+                       StartIcon="@Icons.Material.Filled.ArrowBack"
+                       aria-label="Go back to recipient">
+                Back
+            </MudButton>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       OnClick="GoToStep3"
+                       Disabled="@(_amount <= 0)"
+                       EndIcon="@Icons.Material.Filled.ArrowForward"
+                       aria-label="Continue to confirmation">
+                Continue
+            </MudButton>
+        </div>
+    </MudStep>
+
+    <!-- Step 3: Confirm + OTP -->
+    <MudStep Title="Confirm" Icon="@Icons.Material.Filled.FactCheck">
+        <MudText Typo="Typo.h6" GutterBottom="true">Review & Confirm</MudText>
+
+        <MudPaper Outlined="true" Class="pa-4 mb-4" Style="border-radius: 12px;">
+            <MudText Typo="Typo.subtitle2" Class="mb-3" Color="Color.Secondary">TRANSFER DETAILS</MudText>
+
+            <div class="d-flex justify-space-between mb-2">
+                <MudText Color="Color.Secondary">To</MudText>
+                <MudText Style="font-weight: 600;">@_recipientInfo?.OwnerName</MudText>
+            </div>
+            <div class="d-flex justify-space-between mb-2">
+                <MudText Color="Color.Secondary">Amount</MudText>
+                <MudText Style="font-weight: 700; font-size: 1.1rem;">@_amount.ToString("N2") @_currency</MudText>
+            </div>
+            @if (!string.IsNullOrEmpty(_description))
+            {
+                <div class="d-flex justify-space-between mb-2">
+                    <MudText Color="Color.Secondary">Note</MudText>
+                    <MudText>@_description</MudText>
+                </div>
+            }
+            <div class="d-flex justify-space-between">
+                <MudText Color="Color.Secondary">Idempotency Key</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@_idempotencyKey[..16]…</MudText>
+            </div>
+        </MudPaper>
+
+        @if (_amount > 500)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+                Transfers over $500 require OTP verification.
+            </MudAlert>
+            <OtpInput OnOtpComplete="OnOtpReceived"
+                      IsError="@_otpError"
+                      ErrorMessage="@_otpErrorMessage" />
+        }
+
+        @if (_transferError is not null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-3">@_transferError</MudAlert>
+        }
+
+        <div class="d-flex gap-2 mt-4">
+            <MudButton Variant="Variant.Outlined"
+                       OnClick="GoToStep2"
+                       StartIcon="@Icons.Material.Filled.ArrowBack"
+                       Disabled="@_isTransferring"
+                       aria-label="Go back to amount">
+                Back
+            </MudButton>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Success"
+                       OnClick="ExecuteTransfer"
+                       Disabled="@(!CanSubmit)"
+                       StartIcon="@Icons.Material.Filled.Send"
+                       aria-label="Confirm and send transfer">
+                @if (_isTransferring)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>Sending…</span>
+                }
+                else
+                {
+                    <span>Confirm Transfer</span>
+                }
+            </MudButton>
+        </div>
+    </MudStep>
+
+    <!-- Step 4: Result -->
+    <MudStep Title="Result" Icon="@Icons.Material.Filled.CheckCircle">
+        @if (_completedTransaction is not null)
+        {
+            <div class="d-flex flex-column align-center py-6">
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                         Color="Color.Success"
+                         Style="font-size: 5rem;"
+                         aria-hidden="true" />
+                <MudText Typo="Typo.h5" Class="mt-3" Style="font-weight: 700;">Transfer Successful!</MudText>
+                <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-1">
+                    @_completedTransaction.Amount.ToString("N2") @_completedTransaction.Currency
+                    sent to @_recipientInfo?.OwnerName
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
+                    Transaction ID: @_completedTransaction.Id
+                </MudText>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Class="mt-4"
+                           OnClick="StartNewTransfer"
+                           aria-label="Start a new transfer">
+                    New Transfer
+                </MudButton>
+            </div>
+        }
+        else
+        {
+            <div class="d-flex flex-column align-center py-6">
+                <MudIcon Icon="@Icons.Material.Filled.Error"
+                         Color="Color.Error"
+                         Style="font-size: 5rem;"
+                         aria-hidden="true" />
+                <MudText Typo="Typo.h5" Class="mt-3">Transfer Failed</MudText>
+                <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-1">@_transferError</MudText>
+                <MudButton Variant="Variant.Outlined"
+                           Class="mt-4"
+                           OnClick="GoToStep3"
+                           aria-label="Try again">
+                    Try Again
+                </MudButton>
+            </div>
+        }
+    </MudStep>
+</MudStepper>
+
+@code {
+    [Parameter] public EventCallback<TransactionDto> OnTransferComplete { get; set; }
+
+    private MudStepper? _stepper;
+    private int _activeStep = 0;
+
+    // Step 1
+    private string _receiverWalletIdStr = string.Empty;
+    private WalletLookupDto? _recipientInfo;
+    private bool _isLookingUp;
+    private string? _lookupError;
+
+    // Step 2
+    private decimal _amount;
+    private string _currency = "USD";
+    private string _description = string.Empty;
+
+    // Step 3
+    private string _otpCode = string.Empty;
+    private bool _otpError;
+    private string _otpErrorMessage = string.Empty;
+    private string _idempotencyKey = GenerateIdempotencyKey();
+    private bool _isTransferring;
+    private string? _transferError;
+
+    // Step 4
+    private TransactionDto? _completedTransaction;
+
+    private bool CanSubmit =>
+        !_isTransferring &&
+        (_amount <= 500 || !string.IsNullOrEmpty(_otpCode));
+
+    private async Task LookupRecipient()
+    {
+        if (!Guid.TryParse(_receiverWalletIdStr, out var walletId))
+        {
+            _lookupError = "Please enter a valid wallet ID (UUID format).";
+            return;
+        }
+
+        _isLookingUp = true;
+        _lookupError = null;
+        _recipientInfo = null;
+        StateHasChanged();
+
+        _recipientInfo = await WalletService.LookupWalletAsync(walletId);
+        _isLookingUp = false;
+
+        if (_recipientInfo is null)
+            _lookupError = "Wallet not found. Please check the ID and try again.";
+    }
+
+    private void GoToStep1() => _activeStep = 0;
+    private void GoToStep2() => _activeStep = 1;
+    private void GoToStep3()
+    {
+        // Generate a fresh idempotency key for this attempt
+        _idempotencyKey = GenerateIdempotencyKey();
+        _transferError = null;
+        _activeStep = 2;
+    }
+
+    private void OnOtpReceived(string otp) => _otpCode = otp;
+
+    private async Task ExecuteTransfer()
+    {
+        if (_recipientInfo is null) return;
+
+        _isTransferring = true;
+        _transferError = null;
+        StateHasChanged();
+
+        // Optimistic UI update
+        Dispatcher.Dispatch(new TransactionStartAction());
+
+        var request = new TransferRequest(
+            _recipientInfo.WalletId,
+            _amount,
+            _currency,
+            _description,
+            _amount > 500 ? _otpCode : null);
+
+        var result = await WalletService.TransferAsync(request, _idempotencyKey);
+        _isTransferring = false;
+
+        if (result is not null)
+        {
+            _completedTransaction = result;
+            Dispatcher.Dispatch(new TransactionSuccessAction(result));
+            await OnTransferComplete.InvokeAsync(result);
+            _activeStep = 3;
+        }
+        else
+        {
+            _transferError = "Transfer failed. Please check your balance and try again.";
+            Dispatcher.Dispatch(new TransactionFailureAction(_transferError));
+
+            if (_amount > 500)
+            {
+                _otpError = true;
+                _otpErrorMessage = "OTP may be invalid or expired.";
+            }
+        }
+    }
+
+    private void StartNewTransfer()
+    {
+        _activeStep = 0;
+        _receiverWalletIdStr = string.Empty;
+        _recipientInfo = null;
+        _amount = 0;
+        _description = string.Empty;
+        _otpCode = string.Empty;
+        _completedTransaction = null;
+        _transferError = null;
+    }
+
+    private static string GenerateIdempotencyKey()
+    {
+        var ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var guid = Guid.NewGuid().ToString("N");
+        return $"transfer_{ts}_{guid}";
+    }
+}

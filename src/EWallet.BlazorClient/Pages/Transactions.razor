@@ -1,0 +1,111 @@
+@page "/transactions"
+@attribute [Authorize]
+@using EWallet.BlazorClient.Components
+@using EWallet.BlazorClient.Models
+@using EWallet.BlazorClient.State
+@using Fluxor
+@implements IDisposable
+@inject IState<WalletState> WalletState
+@inject IDispatcher Dispatcher
+
+<PageTitle>Transactions — EWallet</PageTitle>
+
+<MudBreadcrumbs Items="_breadcrumbs" Class="mb-4 pa-0" />
+
+<div class="d-flex align-center justify-space-between flex-wrap gap-3 mb-4">
+    <MudText Typo="Typo.h4" Style="font-weight: 700;">
+        <MudIcon Icon="@Icons.Material.Filled.ReceiptLong" Class="mr-2" aria-hidden="true" />
+        Transaction History
+    </MudText>
+
+    <!-- Filter chips -->
+    <div class="d-flex gap-2 flex-wrap" role="group" aria-label="Filter by type">
+        @foreach (var filter in _filters)
+        {
+            <MudChip Color="@(_selectedFilter == filter ? Color.Primary : Color.Default)"
+                     Variant="@(_selectedFilter == filter ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => ApplyFilter(filter))"
+                     Size="Size.Small"
+                     aria-pressed="@(_selectedFilter == filter)">
+                @filter
+            </MudChip>
+        }
+    </div>
+</div>
+
+@if (WalletState.Value.ErrorMessage is not null)
+{
+    <MudAlert Severity="Severity.Error" Dense="true" Class="mb-4">
+        @WalletState.Value.ErrorMessage
+    </MudAlert>
+}
+
+<MudCard Elevation="2" Style="border-radius: 16px;">
+    <MudCardContent>
+        <TransactionList Transactions="@(WalletState.Value.Transactions?.Items ?? Array.Empty<TransactionDto>())"
+                         IsLoading="@WalletState.Value.IsLoading" />
+    </MudCardContent>
+</MudCard>
+
+<!-- Pagination -->
+@if (WalletState.Value.Transactions is { TotalPages: > 1 })
+{
+    <div class="d-flex justify-center mt-4">
+        <MudPagination Count="@WalletState.Value.Transactions.TotalPages"
+                       Selected="@_currentPage"
+                       SelectedChanged="OnPageChanged"
+                       Color="Color.Primary"
+                       ShowFirstButton="true"
+                       ShowLastButton="true"
+                       aria-label="Transaction pagination" />
+    </div>
+
+    <MudText Typo="Typo.caption"
+             Color="Color.Secondary"
+             Class="text-center mt-2"
+             aria-live="polite">
+        Showing page @_currentPage of @WalletState.Value.Transactions.TotalPages
+        (@WalletState.Value.Transactions.TotalCount total transactions)
+    </MudText>
+}
+
+@code {
+    private readonly string[] _filters = { "All", "Deposit", "Withdrawal", "Transfer" };
+    private string _selectedFilter = "All";
+    private int _currentPage = 1;
+
+    private List<BreadcrumbItem> _breadcrumbs = new()
+    {
+        new BreadcrumbItem("Dashboard", href: "/dashboard"),
+        new BreadcrumbItem("Transactions", href: "/transactions", disabled: true)
+    };
+
+    protected override void OnInitialized()
+    {
+        WalletState.StateChanged += OnStateChanged;
+        LoadTransactions();
+    }
+
+    private void OnStateChanged(object? sender, WalletState state) => InvokeAsync(StateHasChanged);
+
+    private void LoadTransactions()
+    {
+        var type = _selectedFilter == "All" ? null : _selectedFilter;
+        Dispatcher.Dispatch(new FetchTransactionsAction(_currentPage, 20, type));
+    }
+
+    private void ApplyFilter(string filter)
+    {
+        _selectedFilter = filter;
+        _currentPage = 1;
+        LoadTransactions();
+    }
+
+    private void OnPageChanged(int page)
+    {
+        _currentPage = page;
+        LoadTransactions();
+    }
+
+    public void Dispose() => WalletState.StateChanged -= OnStateChanged;
+}
