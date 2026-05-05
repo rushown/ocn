@@ -1,0 +1,86 @@
+name: Tests
+
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main", "develop"]
+
+jobs:
+  # ─── Domain + Application unit tests (no Docker needed) ──────────────────
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Run Domain tests
+        run: >
+          dotnet test tests/EWallet.Domain.Tests
+          --no-build
+          --configuration Release
+          --collect:"XPlat Code Coverage"
+          --results-directory ./coverage/domain
+
+      - name: Run Application tests
+        run: >
+          dotnet test tests/EWallet.Application.Tests
+          --no-build
+          --configuration Release
+          --collect:"XPlat Code Coverage"
+          --results-directory ./coverage/application
+
+      - name: Upload unit test coverage
+        uses: codecov/codecov-action@v4
+        with:
+          directory: ./coverage
+          flags: unit
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  # ─── Integration tests (Testcontainers spins up Postgres + Redis) ─────────
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    # Docker is available on ubuntu-latest — Testcontainers will use it directly
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Run Integration tests
+        run: >
+          dotnet test tests/EWallet.Integration.Tests
+          --no-build
+          --configuration Release
+          --collect:"XPlat Code Coverage"
+          --results-directory ./coverage/integration
+        env:
+          # Give Testcontainers access to the Docker socket on the runner
+          DOCKER_HOST: unix:///var/run/docker.sock
+
+      - name: Upload integration test coverage
+        uses: codecov/codecov-action@v4
+        with:
+          directory: ./coverage/integration
+          flags: integration
+          token: ${{ secrets.CODECOV_TOKEN }}

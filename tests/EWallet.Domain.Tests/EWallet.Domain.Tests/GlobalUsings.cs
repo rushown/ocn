@@ -1,0 +1,11 @@
+global using Xunit;
+global using FluentAssertions;
+global using Moq;
+global using AutoFixture;
+global using AutoFixture.AutoMoq;
+global using EWallet.Domain.Entities;
+global using EWallet.Domain.ValueObjects;
+global using EWallet.Domain.Enums;
+global using EWallet.Domain.Exceptions;
+global using EWallet.Domain.Events;
+global using EWallet.Domain.Tests.Helpers;
