@@ -3,6 +3,7 @@ using EWallet.Domain.Enums;
 using EWallet.Domain.Events;
 using EWallet.Domain.Exceptions;
 using EWallet.Domain.ValueObjects;
+using Money = EWallet.Domain.ValueObjects.Money;
 using FluentAssertions;
 using Xunit;
 
