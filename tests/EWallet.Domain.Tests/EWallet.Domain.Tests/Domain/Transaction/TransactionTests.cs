@@ -3,16 +3,16 @@ using EWallet.Domain.Enums;
 using EWallet.Domain.Events;
 using EWallet.Domain.Exceptions;
 using EWallet.Domain.ValueObjects;
-using Money = EWallet.Domain.ValueObjects.Money;
 using FluentAssertions;
 using Xunit;
+using MoneyVal = EWallet.Domain.ValueObjects.Money;
 
 namespace EWallet.Domain.Tests.Domain.Transaction;
 
 public sealed class TransactionTests
 {
     private static readonly Guid _walletId = Guid.NewGuid();
-    private static readonly Money _money = new(100m, "USD");
+    private static readonly MoneyVal _money = new(100m, "USD");
 
     // -----------------------------------------------------------------------
     // Transaction.Create
