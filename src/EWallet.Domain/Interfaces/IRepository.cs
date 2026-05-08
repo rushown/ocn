@@ -60,3 +60,9 @@ public interface IUserRepository : IRepository<User>
     /// <summary>Returns the user who currently holds <paramref name="token"/> as their refresh token, or <c>null</c>.</summary>
     Task<User?> GetByRefreshTokenAsync(string token, CancellationToken ct = default);
 }
+
+/// <summary>Repository contract for <see cref="AuditLog"/> entities.</summary>
+public interface IAuditLogRepository : IRepository<AuditLog>
+{
+    Task<IReadOnlyList<AuditLog>> GetByUserIdAsync(Guid userId, CancellationToken ct = default);
+}

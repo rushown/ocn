@@ -1,5 +1,5 @@
 using EWallet.Domain.Entities;
-using EWallet.Domain.Repositories;
+using EWallet.Domain.Interfaces;
 
 namespace EWallet.Application.Interfaces;
 

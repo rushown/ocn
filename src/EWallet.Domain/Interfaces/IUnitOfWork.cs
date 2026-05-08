@@ -16,6 +16,7 @@ public interface IUnitOfWork : IDisposable
     /// <summary>User repository scoped to the current unit of work.</summary>
     IUserRepository Users { get; }
 
+    IAuditLogRepository AuditLogs { get; }
     /// <summary>Flushes all pending changes to the database and returns the number of rows affected.</summary>
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 

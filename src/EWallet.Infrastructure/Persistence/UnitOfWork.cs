@@ -22,6 +22,8 @@ public sealed class UnitOfWork : IUnitOfWork
     /// <inheritdoc />
     public IUserRepository Users { get; }
 
+    public IAuditLogRepository AuditLogs { get; }
+
     /// <summary>
     /// Initializes a new <see cref="UnitOfWork"/> with the scoped <see cref="AppDbContext"/>
     /// and concrete repository implementations.
@@ -30,12 +32,14 @@ public sealed class UnitOfWork : IUnitOfWork
         AppDbContext context,
         IWalletRepository wallets,
         ITransactionRepository transactions,
-        IUserRepository users)
+        IUserRepository users,
+        IAuditLogRepository auditLogs)
     {
         _context = context;
         Wallets = wallets;
         Transactions = transactions;
         Users = users;
+        AuditLogs = auditLogs;
     }
 
     /// <inheritdoc />
