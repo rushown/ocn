@@ -60,9 +60,9 @@ public class WithdrawCommandHandler : IRequestHandler<WithdrawCommand, Result<Tr
 
             if (gatewayResult.IsSuccess)
             {
-                wallet.Debit(money);
-                transaction = Transaction.Create(wallet.Id, TransactionType.Withdrawal, money, request.IdempotencyKey);
-                transaction.MarkCompleted();
+                wallet.Debit(money, "Withdrawal");
+                transaction = Transaction.Create(wallet.Id, money, TransactionType.Withdrawal, request.IdempotencyKey);
+                transaction.Complete();
 
                 var audit = AuditLog.Create(wallet.Id, "WITHDRAWAL",
                     $"Withdrew {money}. GatewayRef={gatewayResult.TransactionRef}");
@@ -70,8 +70,8 @@ public class WithdrawCommandHandler : IRequestHandler<WithdrawCommand, Result<Tr
             }
             else
             {
-                transaction = Transaction.Create(wallet.Id, TransactionType.Withdrawal, money, request.IdempotencyKey);
-                transaction.MarkFailed(gatewayResult.ErrorMessage ?? "Gateway error");
+                transaction = Transaction.Create(wallet.Id, money, TransactionType.Withdrawal, request.IdempotencyKey);
+                transaction.Fail(gatewayResult.ErrorMessage ?? "Gateway error");
             }
 
             await _uow.Transactions.AddAsync(transaction, ct);

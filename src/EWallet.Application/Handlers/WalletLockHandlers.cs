@@ -63,7 +63,7 @@ public class UnlockWalletCommandHandler : IRequestHandler<UnlockWalletCommand, R
 
             wallet.Unlock();
 
-            var audit = AuditLog.Create(wallet.Id, "WALLET_UNLOCKED", "Wallet unlocked by admin.");
+            var audit = AuditLog.Create(wallet.Id, "Wallet", "WALLET_UNLOCKED", null, null, null, "");
             await _uow.AuditLogs.AddAsync(audit, ct);
             await _uow.SaveChangesAsync(ct);
 

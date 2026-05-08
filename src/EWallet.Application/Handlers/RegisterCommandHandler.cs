@@ -41,7 +41,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
             var user = User.Create(request.Email, request.PhoneNumber, request.FullName, passwordHash);
 
             var refreshToken = _jwtService.GenerateRefreshToken();
-            user.SetRefreshToken(refreshToken, DateTime.UtcNow.AddDays(30));
+            user.UpdateRefreshToken(refreshToken, DateTime.UtcNow.AddDays(30));
 
             var wallet = Wallet.Create(user.Id, "USD");
 

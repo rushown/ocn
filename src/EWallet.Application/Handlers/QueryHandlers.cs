@@ -35,9 +35,9 @@ public class GetWalletBalanceQueryHandler : IRequestHandler<GetWalletBalanceQuer
             {
                 dailyLimit = user.KycLevel switch
                 {
-                    EWallet.Domain.Enums.KycLevel.Basic    => 5_000m,
-                    EWallet.Domain.Enums.KycLevel.Enhanced => 50_000m,
-                    EWallet.Domain.Enums.KycLevel.Full     => 100_000m,
+                    EWallet.Domain.Enums.KycLevel.Tier1    => 5_000m,
+                    EWallet.Domain.Enums.KycLevel.Tier2    => 50_000m,
+                    EWallet.Domain.Enums.KycLevel.Tier3    => 100_000m,
                     _                                      => 500m,
                 };
             }

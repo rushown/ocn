@@ -23,10 +23,10 @@ public class TransferCommandHandler : IRequestHandler<TransferCommand, Result<Tr
     // KYC-based daily transfer limits
     private static readonly Dictionary<KycLevel, decimal> DailyLimits = new()
     {
-        [KycLevel.None]     = 500m,
-        [KycLevel.Basic]    = 5_000m,
-        [KycLevel.Enhanced] = 50_000m,
-        [KycLevel.Full]     = 100_000m,
+        [KycLevel.Unverified] = 500m,
+        [KycLevel.Tier1]      = 5_000m,
+        [KycLevel.Tier2]      = 50_000m,
+        [KycLevel.Tier3]      = 100_000m,
     };
 
     private const decimal OtpThreshold           = 500m;
@@ -120,20 +120,20 @@ public class TransferCommandHandler : IRequestHandler<TransferCommand, Result<Tr
             await _uow.BeginTransactionAsync(ct);
 
             // 7. Debit sender
-            senderWallet.Debit(money);
+            senderWallet.Debit(money, $"Transfer to {receiverWallet.Id}");
 
             // 8. Credit receiver
-            receiverWallet.Credit(money);
+            receiverWallet.Credit(money, $"Transfer from {senderWallet.Id}");
 
             // 9. Create Transaction entity (Pending → Completed)
             var transaction = Transaction.Create(
                 walletId: senderWallet.Id,
-                type: TransactionType.Transfer,
                 amount: money,
-                idempotencyKey: request.IdempotencyKey,
-                description: request.Description);
+                type: TransactionType.Transfer,
+                idempotencyKey: ...,
+                description: ...);
 
-            transaction.MarkCompleted();
+            transaction.Complete();
 
             // 10. Write AuditLog entries for both wallets
             var auditSender = AuditLog.Create(senderWallet.Id, "TRANSFER_DEBIT",

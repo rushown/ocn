@@ -133,4 +133,60 @@ public sealed class User : BaseEntity
         RefreshTokenExpiry = null;
         SetUpdated();
     }
+
+    /// <summary>Clears the current refresh token, effectively logging the user out of all sessions.</summary>
+    public void ClearRefreshToken()
+    {
+        RefreshToken = null;
+        RefreshTokenExpiry = null;
+        SetUpdated();
+    }
+
+    /// <summary>Replaces the stored password hash (e.g. after a password change).</summary>
+    /// <param name="hash">New pre-computed password hash.</param>
+    /// <exception cref="DomainException">Thrown when <paramref name="hash"/> is null or whitespace.</exception>
+    public void SetPasswordHash(string hash)
+    {
+        if (string.IsNullOrWhiteSpace(hash))
+            throw new DomainException("Password hash is required");
+
+        PasswordHash = hash;
+        SetUpdated();
+    }
+
+    /// <summary>Updates the user's display name and phone number.</summary>
+    /// <param name="fullName">New display name.</param>
+    /// <param name="phoneNumber">New phone number.</param>
+    public void UpdateProfile(string fullName, string phoneNumber)
+    {
+        if (!string.IsNullOrWhiteSpace(fullName))
+            FullName = fullName.Trim();
+        if (!string.IsNullOrWhiteSpace(phoneNumber))
+            PhoneNumber = phoneNumber.Trim();
+        SetUpdated();
+    }
+
+    /// <summary>
+    /// Generates a new TOTP secret, enables two-factor authentication, and returns the secret
+    /// so the caller can render a QR code for the authenticator app.
+    /// </summary>
+    /// <returns>A Base32-encoded TOTP shared secret.</returns>
+    public string GenerateTotpSecret()
+    {
+        var bytes = new byte[20];
+        System.Security.Cryptography.RandomNumberGenerator.Fill(bytes);
+        const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+        var sb = new System.Text.StringBuilder();
+        for (int i = 0; i < bytes.Length; i += 5)
+        {
+            int take = Math.Min(5, bytes.Length - i);
+            long buf = 0;
+            for (int j = 0; j < take; j++) buf = (buf << 8) | bytes[i + j];
+            int bits = take * 8;
+            while (bits > 0) { bits -= 5; sb.Append(alphabet[(int)((buf >> Math.Max(bits, 0)) & 0x1F)]); }
+        }
+        var secret = sb.ToString();
+        EnableTwoFactor(secret);
+        return secret;
+    }
 }

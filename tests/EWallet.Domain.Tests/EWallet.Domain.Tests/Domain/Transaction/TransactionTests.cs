@@ -1,3 +1,11 @@
+using EWallet.Domain.Entities;
+using EWallet.Domain.Enums;
+using EWallet.Domain.Events;
+using EWallet.Domain.Exceptions;
+using EWallet.Domain.ValueObjects;
+using FluentAssertions;
+using Xunit;
+
 namespace EWallet.Domain.Tests.Domain.Transaction;
 
 public sealed class TransactionTests

@@ -6,17 +6,15 @@ public class SignalRService : ISignalRService
 {
     private HubConnection? _hub;
     private readonly IConfiguration _configuration;
-    private readonly IHttpClientFactory _httpClientFactory;
 
     public event Action<decimal, string>? OnBalanceUpdated;
     public event Action<Guid, string>? OnTransactionUpdated;
 
     private string _apiBaseUrl;
 
-    public SignalRService(IConfiguration configuration, IHttpClientFactory httpClientFactory)
+    public SignalRService(IConfiguration configuration)
     {
         _configuration = configuration;
-        _httpClientFactory = httpClientFactory;
         _apiBaseUrl = configuration["ApiBaseUrl"] ?? "http://localhost:5000";
     }
 

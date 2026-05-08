@@ -31,11 +31,11 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
             if (user is null)
                 return Result<AuthResponse>.Failure("Invalid refresh token.");
 
-            if (user.RefreshTokenExpiresAt < DateTime.UtcNow)
+            if (user.RefreshTokenExpiry < DateTime.UtcNow)
                 return Result<AuthResponse>.Failure("Refresh token has expired.");
 
             var newRefreshToken = _jwtService.GenerateRefreshToken();
-            user.SetRefreshToken(newRefreshToken, DateTime.UtcNow.AddDays(30));
+            user.UpdateRefreshToken(newRefreshToken, DateTime.UtcNow.AddDays(30));
             await _uow.SaveChangesAsync(ct);
 
             var accessToken = _jwtService.GenerateAccessToken(user);

@@ -59,9 +59,9 @@ public class DepositCommandHandler : IRequestHandler<DepositCommand, Result<Tran
             if (gatewayResult.IsSuccess)
             {
                 // Credit wallet, create completed transaction
-                wallet.Credit(money);
-                transaction = Transaction.Create(wallet.Id, TransactionType.Deposit, money, request.IdempotencyKey);
-                transaction.MarkCompleted();
+                wallet.Credit(money, "Deposit");
+                transaction = Transaction.Create(wallet.Id, money, TransactionType.Deposit, request.IdempotencyKey);
+                transaction.Complete();
 
                 var audit = AuditLog.Create(wallet.Id, "DEPOSIT",
                     $"Deposited {money}. GatewayRef={gatewayResult.TransactionRef}");
@@ -70,8 +70,8 @@ public class DepositCommandHandler : IRequestHandler<DepositCommand, Result<Tran
             else
             {
                 // Create failed transaction
-                transaction = Transaction.Create(wallet.Id, TransactionType.Deposit, money, request.IdempotencyKey);
-                transaction.MarkFailed(gatewayResult.ErrorMessage ?? "Gateway error");
+                transaction = Transaction.Create(wallet.Id, money, TransactionType.Deposit, request.IdempotencyKey);
+                transaction.Fail(gatewayResult.ErrorMessage ?? "Gateway error");
             }
 
             await _uow.Transactions.AddAsync(transaction, ct);

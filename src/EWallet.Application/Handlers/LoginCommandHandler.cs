@@ -43,7 +43,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<AuthResp
                 return Result<AuthResponse>.Failure("Invalid credentials.");
 
             var refreshToken = _jwtService.GenerateRefreshToken();
-            user.SetRefreshToken(refreshToken, DateTime.UtcNow.AddDays(30));
+            user.UpdateRefreshToken(refreshToken, DateTime.UtcNow.AddDays(30));
 
             await _uow.SaveChangesAsync(ct);
 

@@ -151,7 +151,7 @@
                     </div>
                     <MudSwitch @bind-Value="_twoFactorEnabled"
                                Color="Color.Primary"
-                               ValueChanged="Toggle2FA"
+                               @bind-Value:after="Toggle2FA"
                                aria-label="Toggle two-factor authentication"
                                T="bool" />
                 </div>
@@ -295,10 +295,10 @@
         }
     }
 
-    private async Task Toggle2FA(bool enabled)
+    private async Task Toggle2FA()
     {
         _twoFactorEnabled = enabled;
-        Snackbar.Add(enabled ? "2FA enabled." : "2FA disabled.", Severity.Info);
+        Snackbar.Add(_twoFactorEnabled ? "2FA enabled." : "2FA disabled.", Severity.Info);
         // In full impl: call API to enable/disable 2FA
     }
 

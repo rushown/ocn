@@ -1,3 +1,5 @@
+@using MudBlazor
+@using MudBlazor.Extensions
 @using EWallet.BlazorClient.Models
 @using EWallet.BlazorClient.Services
 @using EWallet.BlazorClient.State
@@ -252,7 +254,6 @@
 @code {
     [Parameter] public EventCallback<TransactionDto> OnTransferComplete { get; set; }
 
-    private MudStepper? _stepper;
     private int _activeStep = 0;
 
     // Step 1
