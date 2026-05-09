@@ -1,6 +1,6 @@
 using EWallet.Domain.Entities;
 using EWallet.Domain.Enums;
-using EWallet.Infrastructure.Interfaces;
+using EWallet.Application.Interfaces;
 using EWallet.Infrastructure.Persistence;
 using Hangfire;
 using Hangfire.PostgreSql;

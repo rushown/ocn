@@ -1,6 +1,6 @@
 using System.Net;
 using System.Security.Claims;
-using EWallet.Infrastructure.Interfaces;
+using EWallet.Application.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
@@ -57,6 +57,16 @@ public sealed class NotificationService : INotificationService
 
         await Task.Delay(50, ct);
     }
+
+    /// <inheritdoc />
+    public Task SendOtpAsync(string phoneNumber, string email, string otp, CancellationToken ct = default)
+    {
+        _logger.LogDebug(
+            "[SIMULATED OTP] Phone: {Phone} | Email: {Email}",
+            phoneNumber, email);
+
+        return Task.CompletedTask;
+    }
 }
 
 /// <summary>
@@ -85,7 +95,11 @@ public sealed class CurrentUserService : ICurrentUserService
     }
 
     /// <inheritdoc />
-    public string IpAddress
+    public string? Email
+        => _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Email)?.Value;
+
+    /// <inheritdoc />
+    public string? IpAddress
     {
         get
         {
@@ -100,4 +114,8 @@ public sealed class CurrentUserService : ICurrentUserService
             return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         }
     }
+
+    /// <inheritdoc />
+    public bool IsAuthenticated
+        => _httpContextAccessor.HttpContext?.User.Identity?.IsAuthenticated == true;
 }

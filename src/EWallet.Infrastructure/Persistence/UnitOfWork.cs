@@ -8,7 +8,7 @@ namespace EWallet.Infrastructure.Persistence;
 /// Coordinates multiple repository operations within a single atomic database transaction.
 /// Wraps <see cref="AppDbContext"/> and exposes typed repositories as properties.
 /// </summary>
-public sealed class UnitOfWork : IUnitOfWork
+public sealed class UnitOfWork : IUnitOfWork, EWallet.Application.Interfaces.IUnitOfWork
 {
     private readonly AppDbContext _context;
     private IDbContextTransaction? _transaction;
@@ -70,5 +70,11 @@ public sealed class UnitOfWork : IUnitOfWork
     {
         _transaction?.Dispose();
         _transaction = null;
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        Dispose();
+        return ValueTask.CompletedTask;
     }
 }

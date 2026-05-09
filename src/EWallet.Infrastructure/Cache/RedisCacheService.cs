@@ -1,5 +1,5 @@
 using System.Text.Json;
-using EWallet.Infrastructure.Interfaces;
+using EWallet.Application.Interfaces;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 
@@ -84,6 +84,20 @@ public sealed class RedisCacheService : ICacheService
         catch (RedisConnectionException ex)
         {
             _logger.LogWarning(ex, "Redis connection failed for DELETE on key '{Key}'.", key);
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> ExistsAsync(string key, CancellationToken ct = default)
+    {
+        try
+        {
+            return await _db.KeyExistsAsync(BuildKey(key));
+        }
+        catch (RedisConnectionException ex)
+        {
+            _logger.LogWarning(ex, "Redis connection failed for EXISTS on key '{Key}'.", key);
+            return false;
         }
     }
 

@@ -1,5 +1,5 @@
 using System.Text.Json;
-using EWallet.Infrastructure.Interfaces;
+using EWallet.Application.Interfaces;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 
@@ -35,29 +35,24 @@ public sealed class RedisIdempotencyService : IIdempotencyService
     /// Returns <c>true</c> when the key did not previously exist (first call — process the request).
     /// Returns <c>false</c> when the key already existed (duplicate — return cached response).
     /// </remarks>
-    public async Task<bool> TrySetAsync<T>(string idempotencyKey, T response, CancellationToken ct = default)
+    public async Task StoreResponseAsync<T>(string idempotencyKey, T response, TimeSpan? ttl = null, CancellationToken ct = default)
     {
         try
         {
             var fullKey = BuildKey(idempotencyKey);
             var json = JsonSerializer.Serialize(response, _jsonOptions);
-
-            // SET NX: only succeeds on the first write
-            var wasSet = await _db.StringSetAsync(fullKey, json, Ttl, When.NotExists);
-            return wasSet; // true = first write, false = already exists
+            await _db.StringSetAsync(fullKey, json, ttl ?? Ttl);
         }
         catch (RedisConnectionException ex)
         {
             _logger.LogWarning(ex,
-                "Redis connection failed during idempotency SET NX for key '{Key}'. Allowing request through.",
+                "Redis connection failed during idempotency SET for key '{Key}'.",
                 idempotencyKey);
-            // Fail open: let the request proceed rather than blocking it due to cache unavailability
-            return true;
         }
     }
 
     /// <inheritdoc />
-    public async Task<T?> GetAsync<T>(string idempotencyKey, CancellationToken ct = default)
+    public async Task<T?> GetCachedResponseAsync<T>(string idempotencyKey, CancellationToken ct = default)
     {
         try
         {

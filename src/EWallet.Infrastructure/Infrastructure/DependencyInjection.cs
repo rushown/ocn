@@ -1,7 +1,6 @@
 using EWallet.Domain.Interfaces;
 using EWallet.Infrastructure.BackgroundJobs;
 using EWallet.Infrastructure.Cache;
-using EWallet.Infrastructure.Interfaces;
 using EWallet.Infrastructure.PaymentGateway;
 using EWallet.Infrastructure.Persistence;
 using EWallet.Infrastructure.Repositories;
@@ -37,10 +36,13 @@ public static class DependencyInjection
                 npgsql => npgsql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName)));
 
         // ── Repositories + Unit of Work ───────────────────────────────────────
-        services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<EWallet.Domain.Interfaces.IUnitOfWork, UnitOfWork>();
+        services.AddScoped<EWallet.Application.Interfaces.IUnitOfWork>(sp =>
+            (EWallet.Application.Interfaces.IUnitOfWork)sp.GetRequiredService<EWallet.Domain.Interfaces.IUnitOfWork>());
         services.AddScoped<IWalletRepository, WalletRepository>();
         services.AddScoped<ITransactionRepository, TransactionRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
         // ── Redis ─────────────────────────────────────────────────────────────
         var redisConnectionString = configuration.GetConnectionString("Redis")
@@ -49,17 +51,17 @@ public static class DependencyInjection
         services.AddSingleton<IConnectionMultiplexer>(sp =>
             ConnectionMultiplexer.Connect(redisConnectionString));
 
-        services.AddScoped<ICacheService, RedisCacheService>();
-        services.AddScoped<IIdempotencyService, RedisIdempotencyService>();
+        services.AddScoped<EWallet.Application.Interfaces.ICacheService, RedisCacheService>();
+        services.AddScoped<EWallet.Application.Interfaces.IIdempotencyService, RedisIdempotencyService>();
 
         // ── Application Services ──────────────────────────────────────────────
-        services.AddScoped<IJwtService, JwtService>();
-        services.AddScoped<IPasswordHasher, PasswordHasher>();
-        services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<EWallet.Application.Interfaces.IJwtService, JwtService>();
+        services.AddScoped<EWallet.Application.Interfaces.IPasswordHasher, PasswordHasher>();
+        services.AddScoped<EWallet.Application.Interfaces.INotificationService, NotificationService>();
 
         // ── Current User (requires IHttpContextAccessor) ──────────────────────
         services.AddHttpContextAccessor();
-        services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<EWallet.Application.Interfaces.ICurrentUserService, CurrentUserService>();
 
         // ── Payment Gateway ───────────────────────────────────────────────────
         // Default to fake gateway unless explicitly disabled.
@@ -73,7 +75,7 @@ public static class DependencyInjection
         if (useFakeGateway)
         {
 #pragma warning disable CS0618 // FakePaymentGateway is intentionally Obsolete
-            services.AddScoped<IPaymentGateway, FakePaymentGateway>();
+            services.AddScoped<EWallet.Application.Interfaces.IPaymentGateway, FakePaymentGateway>();
 #pragma warning restore CS0618
         }
         else

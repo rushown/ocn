@@ -1,4 +1,5 @@
-using EWallet.Infrastructure.Interfaces;
+using EWallet.Application.Interfaces;
+using EWallet.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 
 namespace EWallet.Infrastructure.PaymentGateway;
@@ -27,52 +28,52 @@ public sealed class FakePaymentGateway : IPaymentGateway
     /// <inheritdoc />
     /// <remarks>Deposits always succeed in this simulation.</remarks>
     public Task<PaymentResult> ProcessDepositAsync(
-        Guid walletId, decimal amount, string currency, CancellationToken ct = default)
+        Guid walletId, Money amount, string externalRef, CancellationToken ct = default)
     {
-        var externalRef = GenerateRef();
+        var providerRef = GenerateRef();
         _logger.LogInformation(
             "[FakeGateway] Deposit SUCCESS | Wallet: {WalletId} | Amount: {Amount} {Currency} | Ref: {Ref}",
-            walletId, amount, currency, externalRef);
+            walletId, amount.Amount, amount.Currency, providerRef);
 
-        return Task.FromResult(new PaymentResult(true, externalRef));
+        return Task.FromResult(new PaymentResult(true, providerRef, null));
     }
 
     /// <inheritdoc />
     /// <remarks>Withdrawals succeed with a 95% probability.</remarks>
     public Task<PaymentResult> ProcessWithdrawalAsync(
-        Guid walletId, decimal amount, string currency, CancellationToken ct = default)
+        Guid walletId, Money amount, string externalRef, CancellationToken ct = default)
     {
         var success = Random.Shared.NextDouble() < 0.95;
-        var externalRef = GenerateRef();
+        var providerRef = GenerateRef();
 
         if (success)
         {
             _logger.LogInformation(
                 "[FakeGateway] Withdrawal SUCCESS | Wallet: {WalletId} | Amount: {Amount} {Currency} | Ref: {Ref}",
-                walletId, amount, currency, externalRef);
+                walletId, amount.Amount, amount.Currency, providerRef);
 
-            return Task.FromResult(new PaymentResult(true, externalRef));
+            return Task.FromResult(new PaymentResult(true, providerRef, null));
         }
 
         var error = "Simulated gateway rejection (5% failure rate)";
         _logger.LogWarning(
             "[FakeGateway] Withdrawal FAILED | Wallet: {WalletId} | Amount: {Amount} {Currency} | Reason: {Reason}",
-            walletId, amount, currency, error);
+            walletId, amount.Amount, amount.Currency, error);
 
-        return Task.FromResult(new PaymentResult(false, externalRef, error));
+        return Task.FromResult(new PaymentResult(false, providerRef, error));
     }
 
     /// <inheritdoc />
     /// <remarks>Refunds always succeed in this simulation.</remarks>
     public Task<PaymentResult> RefundAsync(
-        string externalRef, decimal amount, string currency, CancellationToken ct = default)
+        string originalTransactionRef, Money amount, CancellationToken ct = default)
     {
         var newRef = GenerateRef();
         _logger.LogInformation(
             "[FakeGateway] Refund SUCCESS | OriginalRef: {OriginalRef} | Amount: {Amount} {Currency} | NewRef: {NewRef}",
-            externalRef, amount, currency, newRef);
+            originalTransactionRef, amount.Amount, amount.Currency, newRef);
 
-        return Task.FromResult(new PaymentResult(true, newRef));
+        return Task.FromResult(new PaymentResult(true, newRef, null));
     }
 
     private static string GenerateRef() => $"FAKE-{Guid.NewGuid():N}".ToUpperInvariant();

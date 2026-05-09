@@ -2,7 +2,8 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using EWallet.Infrastructure.Interfaces;
+using EWallet.Application.Interfaces;
+using EWallet.Domain.Entities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
@@ -45,14 +46,14 @@ public sealed class JwtService : IJwtService
     }
 
     /// <inheritdoc />
-    public string GenerateAccessToken(Guid userId, string email, int kycLevel)
+    public string GenerateAccessToken(User user)
     {
         var claims = new[]
         {
-            new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
-            new Claim(JwtRegisteredClaimNames.Email, email),
+            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new Claim(JwtRegisteredClaimNames.Email, user.Email),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new Claim("kyc_level", kycLevel.ToString())
+            new Claim("kyc_level", ((int)user.KycLevel).ToString())
         };
 
         var credentials = new SigningCredentials(_signingKey, SecurityAlgorithms.HmacSha256);
