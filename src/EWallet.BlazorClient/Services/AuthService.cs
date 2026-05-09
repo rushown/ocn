@@ -9,11 +9,16 @@ public class AuthService : IAuthService
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILocalStorageService _storage;
+    private readonly CustomAuthStateProvider _authStateProvider;
 
-    public AuthService(IHttpClientFactory httpClientFactory, ILocalStorageService storage)
+    public AuthService(
+        IHttpClientFactory httpClientFactory,
+        ILocalStorageService storage,
+        CustomAuthStateProvider authStateProvider)
     {
         _httpClientFactory = httpClientFactory;
         _storage = storage;
+        _authStateProvider = authStateProvider;
     }
 
     private HttpClient PublicClient => _httpClientFactory.CreateClient("EWalletApiPublic");
@@ -76,6 +81,7 @@ public class AuthService : IAuthService
         {
             await _storage.RemoveItemAsync("access_token");
             await _storage.RemoveItemAsync("current_user");
+            _authStateProvider.NotifyAuthenticationStateChanged();
         }
     }
 
@@ -145,6 +151,7 @@ public class AuthService : IAuthService
     {
         await _storage.SetItemAsync("access_token", auth.AccessToken);
         await _storage.SetItemAsync("current_user", auth.User);
+        _authStateProvider.NotifyAuthenticationStateChanged();
     }
 
     private static bool IsTokenExpired(string token)

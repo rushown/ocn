@@ -38,6 +38,9 @@ builder.Services.AddScoped(sp =>
 // Local storage
 builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddAuthorizationCore();
+builder.Services.AddScoped<CustomAuthStateProvider>();
+builder.Services.AddScoped<AuthenticationStateProvider>(sp =>
+    sp.GetRequiredService<CustomAuthStateProvider>());
 
 // Application services
 builder.Services.AddScoped<IAuthService, AuthService>();
