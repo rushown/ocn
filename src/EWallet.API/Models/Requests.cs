@@ -13,11 +13,9 @@ public record LoginRequest(
     string Email,
     string Password);
 
-public record RefreshTokenRequest(
-    string RefreshToken);
-
-public record LogoutRequest(
-    string RefreshToken);
+// Refresh/logout tokens are handled via HttpOnly cookies.
+public record RefreshTokenRequest();
+public record LogoutRequest();
 
 // ─── Wallet ───────────────────────────────────────────────────────────────────
 

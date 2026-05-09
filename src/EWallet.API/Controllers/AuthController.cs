@@ -14,6 +14,8 @@ namespace EWallet.API.Controllers;
 [Produces("application/json")]
 public class AuthController : ControllerBase
 {
+    private const string RefreshTokenCookieName = "refreshToken";
+
     private readonly IMediator _mediator;
     private readonly ILogger<AuthController> _logger;
 
@@ -71,6 +73,7 @@ public class AuthController : ControllerBase
             });
         }
 
+        SetRefreshTokenCookie(result.Value!.RefreshToken);
         _logger.LogInformation("User {Email} logged in successfully", request.Email);
         return Ok(result.Value);
     }
@@ -83,17 +86,33 @@ public class AuthController : ControllerBase
         [FromBody] EWallet.API.Models.RefreshTokenRequest request,
         CancellationToken ct)
     {
-        var command = new RefreshTokenCommand(request.RefreshToken);
+        var refreshToken = Request.Cookies[RefreshTokenCookieName];
+        if (string.IsNullOrWhiteSpace(refreshToken))
+        {
+            return Unauthorized(new ProblemDetails
+            {
+                Title = "Token Refresh Failed",
+                Detail = "Missing refresh token cookie.",
+                Status = StatusCodes.Status401Unauthorized
+            });
+        }
+
+        var command = new RefreshTokenCommand(refreshToken);
         var result = await _mediator.Send(command, ct);
 
-        return result.IsSuccess
-            ? Ok(result.Value)
-            : Unauthorized(new ProblemDetails
+        if (!result.IsSuccess)
+        {
+            ClearRefreshTokenCookie();
+            return Unauthorized(new ProblemDetails
             {
                 Title = "Token Refresh Failed",
                 Detail = result.Error,
                 Status = StatusCodes.Status401Unauthorized
             });
+        }
+
+        SetRefreshTokenCookie(result.Value!.RefreshToken);
+        return Ok(result.Value);
     }
 
     /// <summary>Logout and revoke refresh token</summary>
@@ -109,7 +128,32 @@ public class AuthController : ControllerBase
         var command = new LogoutCommand(userId);
         await _mediator.Send(command, ct);
 
+        ClearRefreshTokenCookie();
         _logger.LogInformation("User {UserId} logged out", userId);
         return NoContent();
+    }
+
+    private void SetRefreshTokenCookie(string refreshToken)
+    {
+        // In production, cookie must be Secure (HTTPS). Locally over http it must be false,
+        // otherwise the browser won't store it.
+        var isHttps = Request.IsHttps;
+
+        Response.Cookies.Append(RefreshTokenCookieName, refreshToken, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = isHttps,
+            SameSite = SameSiteMode.Strict,
+            Path = "/api/auth",
+            Expires = DateTimeOffset.UtcNow.AddDays(30)
+        });
+    }
+
+    private void ClearRefreshTokenCookie()
+    {
+        Response.Cookies.Delete(RefreshTokenCookieName, new CookieOptions
+        {
+            Path = "/api/auth"
+        });
     }
 }

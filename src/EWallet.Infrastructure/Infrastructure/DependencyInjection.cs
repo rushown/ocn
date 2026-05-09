@@ -65,6 +65,11 @@ public static class DependencyInjection
         // Default to fake gateway unless explicitly disabled.
         // This keeps local/staging environments bootable while still allowing strict production enforcement.
         var useFakeGateway = configuration.GetValue("Payments:UseFakeGateway", true);
+        if (environment?.IsProduction() == true && useFakeGateway)
+        {
+            throw new InvalidOperationException(
+                "Production misconfiguration: Payments:UseFakeGateway is true. Refusing to start with FakePaymentGateway.");
+        }
         if (useFakeGateway)
         {
 #pragma warning disable CS0618 // FakePaymentGateway is intentionally Obsolete

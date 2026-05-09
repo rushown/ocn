@@ -1,7 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using EWallet.Application.Contracts.Requests;
-using EWallet.Application.Contracts.Responses;
+using EWallet.API.Models;
+using EWallet.Application.DTOs;
 
 namespace EWallet.Integration.Tests.Helpers;
 
@@ -17,8 +17,8 @@ public static class ApiClientHelper
     /// Registers a new user, logs them in, attaches the Bearer token, and returns
     /// both the client and the full <see cref="AuthResponse"/>.
     /// </summary>
-    public static async Task<(HttpClient client, AuthResponse auth, RegisterRequest credentials)>
-        CreateAuthenticatedClientAsync(HttpClient client, RegisterRequest? request = null)
+    public static async Task<(HttpClient client, AuthResponse auth, EWallet.API.Models.RegisterRequest credentials)>
+        CreateAuthenticatedClientAsync(HttpClient client, EWallet.API.Models.RegisterRequest? request = null)
     {
         var reg = request ?? FakeDataFactory.ValidRegisterRequest();
 
@@ -27,11 +27,9 @@ public static class ApiClientHelper
         regResponse.EnsureSuccessStatusCode();
 
         // Login to get tokens (registration may or may not return them directly)
-        var loginResponse = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest
-        {
-            Email    = reg.Email,
-            Password = reg.Password,
-        });
+        var loginResponse = await client.PostAsJsonAsync(
+            "/api/auth/login",
+            new EWallet.API.Models.LoginRequest(reg.Email, reg.Password));
         loginResponse.EnsureSuccessStatusCode();
 
         var auth = await loginResponse.Content.ReadFromJsonAsync<AuthResponse>()
@@ -48,10 +46,10 @@ public static class ApiClientHelper
     /// Creates a second independent authenticated client using a *new* <see cref="HttpClient"/>
     /// instance — useful for multi-user transfer tests.
     /// </summary>
-    public static async Task<(HttpClient client, AuthResponse auth, RegisterRequest credentials)>
+    public static async Task<(HttpClient client, AuthResponse auth, EWallet.API.Models.RegisterRequest credentials)>
         CreateSecondAuthenticatedClientAsync(
             System.Net.Http.HttpMessageHandler handler,
-            RegisterRequest? request = null)
+            EWallet.API.Models.RegisterRequest? request = null)
     {
         var secondClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost") };
         return await CreateAuthenticatedClientAsync(secondClient, request);
@@ -60,7 +58,7 @@ public static class ApiClientHelper
     // ─── Wallet helpers ───────────────────────────────────────────────────────
 
     /// <summary>Deposits funds and returns the parsed response body.</summary>
-    public static async Task<DepositResponse?> DepositAsync(
+    public static async Task<TransactionDto?> DepositAsync(
         HttpClient client,
         decimal amount,
         string? idempotencyKey = null)
@@ -76,15 +74,15 @@ public static class ApiClientHelper
         var response = await client.SendAsync(request);
         response.EnsureSuccessStatusCode();
 
-        return await response.Content.ReadFromJsonAsync<DepositResponse>();
+        return await response.Content.ReadFromJsonAsync<TransactionDto>();
     }
 
     /// <summary>Fetches the authenticated user's wallet balance.</summary>
-    public static async Task<WalletBalanceResponse?> GetBalanceAsync(HttpClient client)
+    public static async Task<BalanceDto?> GetBalanceAsync(HttpClient client)
     {
         var response = await client.GetAsync("/api/wallet/balance");
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<WalletBalanceResponse>();
+        return await response.Content.ReadFromJsonAsync<BalanceDto>();
     }
 
     /// <summary>Removes the Authorization header to simulate an unauthenticated request.</summary>

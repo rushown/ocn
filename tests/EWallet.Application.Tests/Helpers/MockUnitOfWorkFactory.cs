@@ -11,20 +11,23 @@ namespace EWallet.Application.Tests.Helpers;
 public static class MockUnitOfWorkFactory
 {
     public static (
-        Mock<IUnitOfWork> uow,
+        Mock<EWallet.Application.Interfaces.IUnitOfWork> uow,
         Mock<IWalletRepository> wallets,
         Mock<ITransactionRepository> transactions,
-        Mock<IUserRepository> users)
+        Mock<IUserRepository> users,
+        Mock<IAuditLogRepository> auditLogs)
         Create()
     {
         var wallets = new Mock<IWalletRepository>();
         var transactions = new Mock<ITransactionRepository>();
         var users = new Mock<IUserRepository>();
+        var auditLogs = new Mock<IAuditLogRepository>();
 
-        var uow = new Mock<IUnitOfWork>();
+        var uow = new Mock<EWallet.Application.Interfaces.IUnitOfWork>();
         uow.Setup(u => u.Wallets).Returns(wallets.Object);
         uow.Setup(u => u.Transactions).Returns(transactions.Object);
         uow.Setup(u => u.Users).Returns(users.Object);
+        uow.Setup(u => u.AuditLogs).Returns(auditLogs.Object);
 
         // Default: async operations complete successfully
         uow.Setup(u => u.BeginTransactionAsync(It.IsAny<CancellationToken>()))
@@ -36,6 +39,6 @@ public static class MockUnitOfWorkFactory
         uow.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
            .ReturnsAsync(1);
 
-        return (uow, wallets, transactions, users);
+        return (uow, wallets, transactions, users, auditLogs);
     }
 }

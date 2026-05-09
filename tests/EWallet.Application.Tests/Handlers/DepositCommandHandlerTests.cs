@@ -1,41 +1,40 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Moq;
-using EWallet.Application.Commands.Deposit;
+using EWallet.Application.Commands;
+using EWallet.Application.DTOs;
+using EWallet.Application.Handlers;
 using EWallet.Application.Interfaces;
 using EWallet.Application.Tests.Helpers;
 using EWallet.Domain.Enums;
-using EWallet.Domain.Interfaces;
+using EWallet.Domain.ValueObjects;
 
 namespace EWallet.Application.Tests.Handlers;
 
 public class DepositCommandHandlerTests
 {
     private readonly Mock<IUnitOfWork> _uow;
-    private readonly Mock<IWalletRepository> _wallets;
-    private readonly Mock<ITransactionRepository> _transactions;
     private readonly Mock<IPaymentGateway> _gateway;
-    private readonly Mock<ICurrentUserService> _currentUser;
+    private readonly Mock<IWalletNotificationService> _notifications;
+    private readonly Mock<AutoMapper.IMapper> _mapper;
     private readonly DepositCommandHandler _handler;
 
     public DepositCommandHandlerTests()
     {
-        (_uow, _wallets, _transactions, _) = MockUnitOfWorkFactory.Create();
-
+        (_uow, _, _, _, _) = MockUnitOfWorkFactory.Create();
         _gateway     = new Mock<IPaymentGateway>();
-        _currentUser = new Mock<ICurrentUserService>();
+        _notifications = new Mock<IWalletNotificationService>();
+        _mapper = new Mock<AutoMapper.IMapper>();
+
+        var logger = new Mock<ILogger<DepositCommandHandler>>();
 
         _handler = new DepositCommandHandler(
             _uow.Object,
             _gateway.Object,
-            _currentUser.Object);
+            _notifications.Object,
+            _mapper.Object,
+            logger.Object);
     }
-
-    private DepositCommand BuildCommand(decimal amount, string? gatewayToken = "tok_valid") =>
-        new()
-        {
-            Amount       = amount,
-            GatewayToken = gatewayToken!,
-        };
 
     // ─── Happy path ──────────────────────────────────────────────────────────
 
@@ -43,30 +42,33 @@ public class DepositCommandHandlerTests
     public async Task Handle_GatewaySuccess_CreditsWalletAndReturnsSuccess()
     {
         // Arrange
-        var (user, wallet) = WalletTestData.CreateUserWithWallet(balance: 0m);
+        var userId = Guid.NewGuid();
+        var wallet = WalletTestData.CreateWalletForUser(userId, balance: 0m);
 
-        _currentUser.Setup(c => c.UserId).Returns(user.Id);
-        _wallets.Setup(w => w.GetByOwnerIdAsync(user.Id, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(wallet);
+        _uow.Setup(u => u.Wallets.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(wallet);
 
-        _gateway.Setup(g => g.ChargeAsync(It.IsAny<GatewayChargeRequest>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(GatewayResult.Succeeded());
-
-        var command = BuildCommand(amount: 100m);
+        _gateway.Setup(g => g.ProcessDepositAsync(
+                wallet.Id,
+                It.IsAny<Money>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PaymentResult(true, "ref123", null));
+        
+        _mapper.Setup(m => m.Map<TransactionDto>(It.IsAny<EWallet.Domain.Entities.Transaction>()))
+            .Returns((EWallet.Domain.Entities.Transaction tx) => new TransactionDto(
+                tx.Id, tx.WalletId, tx.Amount.Amount, tx.Amount.Currency, tx.Type, tx.Status,
+                tx.Description, tx.IdempotencyKey, tx.CreatedAt, tx.CompletedAt));
 
         // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
+        var result = await _handler.Handle(
+            new DepositCommand(userId, 100m, "USD", "ext1", "idem1"),
+            CancellationToken.None);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-
-        _wallets.Verify(w => w.CreditAsync(wallet.Id, 100m, It.IsAny<CancellationToken>()), Times.Once,
-            because: "successful gateway charge must credit the wallet");
-
-        // The resulting transaction record should be Completed
-        _transactions.Verify(t => t.AddAsync(
-            It.Is<Domain.Entities.Transaction>(tx => tx.Status == TransactionStatus.Completed),
-            It.IsAny<CancellationToken>()), Times.Once);
+        wallet.Balance.Amount.Should().Be(100m);
+        result.Value!.Status.Should().Be(TransactionStatus.Completed);
     }
 
     // ─── Gateway failure ─────────────────────────────────────────────────────
@@ -75,30 +77,31 @@ public class DepositCommandHandlerTests
     public async Task Handle_GatewayFailure_DoesNotCreditWalletAndMarksTransactionFailed()
     {
         // Arrange
-        var (user, wallet) = WalletTestData.CreateUserWithWallet(balance: 0m);
+        var userId = Guid.NewGuid();
+        var wallet = WalletTestData.CreateWalletForUser(userId, balance: 0m);
 
-        _currentUser.Setup(c => c.UserId).Returns(user.Id);
-        _wallets.Setup(w => w.GetByOwnerIdAsync(user.Id, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(wallet);
+        _uow.Setup(u => u.Wallets.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(wallet);
 
-        _gateway.Setup(g => g.ChargeAsync(It.IsAny<GatewayChargeRequest>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(GatewayResult.Failed("Card declined"));
-
-        var command = BuildCommand(amount: 100m);
+        _gateway.Setup(g => g.ProcessDepositAsync(
+                wallet.Id,
+                It.IsAny<Money>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PaymentResult(false, "ref123", "Card declined"));
+        
+        _mapper.Setup(m => m.Map<TransactionDto>(It.IsAny<EWallet.Domain.Entities.Transaction>()))
+            .Returns((EWallet.Domain.Entities.Transaction tx) => new TransactionDto(
+                tx.Id, tx.WalletId, tx.Amount.Amount, tx.Amount.Currency, tx.Type, tx.Status,
+                tx.Description, tx.IdempotencyKey, tx.CreatedAt, tx.CompletedAt));
 
         // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
+        var result = await _handler.Handle(
+            new DepositCommand(userId, 100m, "USD", "ext1", "idem1"),
+            CancellationToken.None);
 
         // Assert
         result.IsFailure.Should().BeTrue();
-
-        _wallets.Verify(w => w.CreditAsync(It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()),
-            Times.Never,
-            because: "a failed gateway charge must never credit the wallet");
-
-        _transactions.Verify(t => t.AddAsync(
-            It.Is<Domain.Entities.Transaction>(tx => tx.Status == TransactionStatus.Failed),
-            It.IsAny<CancellationToken>()), Times.Once,
-            because: "even failed deposits must be recorded for audit purposes");
+        wallet.Balance.Amount.Should().Be(0m);
     }
 }

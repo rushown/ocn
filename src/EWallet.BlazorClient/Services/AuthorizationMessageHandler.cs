@@ -68,22 +68,17 @@ public class AuthorizationMessageHandler : DelegatingHandler
 
     private async Task<string?> TryRefreshAsync(CancellationToken cancellationToken)
     {
-        var refreshToken = await _storage.GetItemAsync<string>("refresh_token", cancellationToken);
-        if (string.IsNullOrEmpty(refreshToken))
-            return null;
-
         try
         {
             var client = _clientFactory.CreateClient("EWalletApiPublic");
             var response = await client.PostAsJsonAsync(
                 "/api/auth/refresh",
-                new RefreshRequest(refreshToken),
+                new RefreshRequest(),
                 cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
                 await _storage.RemoveItemAsync("access_token", cancellationToken);
-                await _storage.RemoveItemAsync("refresh_token", cancellationToken);
                 return null;
             }
 
@@ -93,7 +88,6 @@ public class AuthorizationMessageHandler : DelegatingHandler
             if (auth is null) return null;
 
             await _storage.SetItemAsync("access_token", auth.AccessToken, cancellationToken);
-            await _storage.SetItemAsync("refresh_token", auth.RefreshToken, cancellationToken);
             return auth.AccessToken;
         }
         catch

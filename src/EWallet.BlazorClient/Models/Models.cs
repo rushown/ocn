@@ -13,10 +13,9 @@ public record RegisterRequest(
 
 public record AuthResponse(
     string AccessToken,
-    string RefreshToken,
     UserDto User);
 
-public record RefreshRequest(string RefreshToken);
+public record RefreshRequest();
 
 // ─── User ─────────────────────────────────────────────────────────────────────
 

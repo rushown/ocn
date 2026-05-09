@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace EWallet.Application.DTOs;
 
 public record RegisterRequest(
@@ -13,10 +15,9 @@ public record LoginRequest(
 
 public record AuthResponse(
     string AccessToken,
-    string RefreshToken,
+    [property: JsonIgnore] string RefreshToken,
     DateTime ExpiresAt,
     Guid UserId,
     string Email);
 
-public record RefreshTokenRequest(
-    string RefreshToken);
+// Refresh tokens are handled via HttpOnly cookies in the API layer.

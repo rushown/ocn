@@ -75,7 +75,6 @@ public class AuthService : IAuthService
         finally
         {
             await _storage.RemoveItemAsync("access_token");
-            await _storage.RemoveItemAsync("refresh_token");
             await _storage.RemoveItemAsync("current_user");
         }
     }
@@ -117,20 +116,15 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse?> RefreshTokenAsync()
     {
-        var refreshToken = await _storage.GetItemAsync<string>("refresh_token");
-        if (string.IsNullOrEmpty(refreshToken))
-            return null;
-
         try
         {
             var response = await PublicClient.PostAsJsonAsync(
                 "/api/auth/refresh",
-                new RefreshRequest(refreshToken));
+                new RefreshRequest());
 
             if (!response.IsSuccessStatusCode)
             {
                 await _storage.RemoveItemAsync("access_token");
-                await _storage.RemoveItemAsync("refresh_token");
                 return null;
             }
 
@@ -150,7 +144,6 @@ public class AuthService : IAuthService
     private async Task PersistTokensAsync(AuthResponse auth)
     {
         await _storage.SetItemAsync("access_token", auth.AccessToken);
-        await _storage.SetItemAsync("refresh_token", auth.RefreshToken);
         await _storage.SetItemAsync("current_user", auth.User);
     }
 

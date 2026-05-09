@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using Moq;
 using EWallet.Application.Behaviors;
+using EWallet.Application.Interfaces;
 
 namespace EWallet.Application.Tests.Behaviors;
 
@@ -10,8 +11,8 @@ public class LoggingBehaviorTests
 {
     // ─── Dummy request / response types ──────────────────────────────────────
 
-    private record TestRequest : IRequest<TestResponse>;
-    private record TestResponse;
+    public record TestRequest : IRequest<TestResponse>;
+    public record TestResponse;
 
     // ─── Logger receives at least one call per request ───────────────────────
 
@@ -20,8 +21,9 @@ public class LoggingBehaviorTests
     {
         // Arrange
         var logger = new Mock<ILogger<LoggingBehavior<TestRequest, TestResponse>>>();
+        var currentUser = new Mock<ICurrentUserService>();
 
-        var behavior = new LoggingBehavior<TestRequest, TestResponse>(logger.Object);
+        var behavior = new LoggingBehavior<TestRequest, TestResponse>(logger.Object, currentUser.Object);
 
         RequestHandlerDelegate<TestResponse> next =
             () => Task.FromResult(new TestResponse());
@@ -37,8 +39,7 @@ public class LoggingBehaviorTests
                 It.Is<It.IsAnyType>((v, _) => v != null),
                 It.IsAny<Exception?>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.AtLeastOnce,
-            because: "the logging behavior must emit at least one log entry per handled request");
+            Times.AtLeastOnce);
     }
 
     // ─── Next delegate is always called ──────────────────────────────────────
@@ -48,7 +49,8 @@ public class LoggingBehaviorTests
     {
         // Arrange
         var logger = new Mock<ILogger<LoggingBehavior<TestRequest, TestResponse>>>();
-        var behavior = new LoggingBehavior<TestRequest, TestResponse>(logger.Object);
+        var currentUser = new Mock<ICurrentUserService>();
+        var behavior = new LoggingBehavior<TestRequest, TestResponse>(logger.Object, currentUser.Object);
 
         var nextCalled = false;
         RequestHandlerDelegate<TestResponse> next = () =>
@@ -71,7 +73,8 @@ public class LoggingBehaviorTests
     {
         // Arrange
         var logger = new Mock<ILogger<LoggingBehavior<TestRequest, TestResponse>>>();
-        var behavior = new LoggingBehavior<TestRequest, TestResponse>(logger.Object);
+        var currentUser = new Mock<ICurrentUserService>();
+        var behavior = new LoggingBehavior<TestRequest, TestResponse>(logger.Object, currentUser.Object);
 
         RequestHandlerDelegate<TestResponse> next =
             () => throw new InvalidOperationException("downstream failure");

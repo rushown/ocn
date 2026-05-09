@@ -11,7 +11,7 @@ namespace EWallet.Infrastructure.Services;
 
 /// <summary>
 /// Generates and validates JWT access tokens signed with HS256.
-/// Configuration keys expected under <c>JwtSettings</c>:
+/// Configuration keys expected under <c>Jwt</c>:
 /// <list type="bullet">
 ///   <item><c>Secret</c> — signing secret (at least 32 characters)</item>
 ///   <item><c>Issuer</c> — token issuer</item>
@@ -33,12 +33,13 @@ public sealed class JwtService : IJwtService
     {
         _logger = logger;
 
-        var secret = configuration["JwtSettings:Secret"]
-            ?? throw new InvalidOperationException("JwtSettings:Secret is not configured.");
-        _issuer = configuration["JwtSettings:Issuer"]
-            ?? throw new InvalidOperationException("JwtSettings:Issuer is not configured.");
-        _audience = configuration["JwtSettings:Audience"]
-            ?? throw new InvalidOperationException("JwtSettings:Audience is not configured.");
+        // Keep consistent with API auth configuration (EWallet.API reads from the "Jwt" section).
+        var secret = configuration["Jwt:Secret"]
+            ?? throw new InvalidOperationException("Jwt:Secret is not configured.");
+        _issuer = configuration["Jwt:Issuer"]
+            ?? throw new InvalidOperationException("Jwt:Issuer is not configured.");
+        _audience = configuration["Jwt:Audience"]
+            ?? throw new InvalidOperationException("Jwt:Audience is not configured.");
 
         _signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
     }
