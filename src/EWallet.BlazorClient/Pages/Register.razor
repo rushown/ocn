@@ -172,7 +172,7 @@ else
         if (result is not null)
             Navigation.NavigateTo("/dashboard");
         else
-            _errorMessage = "Registration failed. The email may already be in use.";
+            _errorMessage = AuthService.LastError ?? "Registration failed. The email may already be in use.";
     }
 
     private static (double strength, Color color, string label) GetPasswordStrength(string password)

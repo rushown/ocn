@@ -11,6 +11,7 @@
 @inject IDispatcher Dispatcher
 @inject ISignalRService SignalR
 @inject IAuthService AuthService
+@inject IWalletService WalletService
 @inject NavigationManager Navigation
 
 <PageTitle>Dashboard — EWallet</PageTitle>
@@ -224,20 +225,59 @@
     private async Task HandleDeposit()
     {
         Dispatcher.Dispatch(new TransactionStartAction());
+        var amount = _depositAmount;
+        var description = _depositDescription;
         _showDepositDialog = false;
 
+        if (amount <= 0)
+        {
+            Dispatcher.Dispatch(new TransactionFailureAction("Deposit amount must be greater than 0."));
+            return;
+        }
+
         var key = $"deposit_{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}_{Guid.NewGuid():N}";
-        // WalletService injected via field in production; simplified here
-        // Dispatcher would handle via effects in full impl
+        var tx = await WalletService.DepositAsync(new DepositRequest(amount, WalletState.Value.Currency, description), key);
+        if (tx is not null)
+        {
+            Dispatcher.Dispatch(new TransactionSuccessAction(tx));
+            Dispatcher.Dispatch(new FetchBalanceAction());
+            Dispatcher.Dispatch(new FetchTransactionsAction(1, 20));
+            _depositAmount = 0;
+            _depositDescription = string.Empty;
+            return;
+        }
+
+        Dispatcher.Dispatch(new TransactionFailureAction(
+            WalletService.LastError ?? "Deposit failed. Please try again."));
     }
 
     private async Task HandleWithdraw()
     {
         Dispatcher.Dispatch(new TransactionStartAction());
+        var amount = _withdrawAmount;
+        var description = _withdrawDescription;
         _showWithdrawDialog = false;
 
+        if (amount <= 0)
+        {
+            Dispatcher.Dispatch(new TransactionFailureAction("Withdrawal amount must be greater than 0."));
+            return;
+        }
+
         var key = $"withdraw_{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}_{Guid.NewGuid():N}";
-        // WalletService injected via field in production; simplified here
+        var tx = await WalletService.WithdrawAsync(new WithdrawRequest(amount, WalletState.Value.Currency, description), key);
+        if (tx is not null)
+        {
+            Dispatcher.Dispatch(new TransactionSuccessAction(tx));
+            Dispatcher.Dispatch(new FetchBalanceAction());
+            Dispatcher.Dispatch(new FetchTransactionsAction(1, 20));
+            _withdrawAmount = 0;
+            _withdrawDescription = string.Empty;
+            return;
+        }
+
+        Dispatcher.Dispatch(new TransactionFailureAction(
+            WalletService.LastError ?? "Withdrawal failed. Please try again."));
     }
 
     private decimal GetMonthlyTotal(params string[] types)

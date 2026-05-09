@@ -105,10 +105,10 @@ ocn/
 ```bash
 git clone https://github.com/rushown/ocn.git
 cd ocn
-docker-compose up -d
+docker-compose up -d postgres redis
 ```
 
-This starts PostgreSQL 15 on `:5432`, Redis 7 on `:6379`, and the Hangfire dashboard on `:8080`.
+This starts PostgreSQL 15 on `:15432` and Redis 7 on `:6379`.
 
 ### 2 — Configure secrets
 
@@ -122,15 +122,15 @@ Edit `appsettings.Development.json` and fill in:
 ```json
 {
   "ConnectionStrings": {
-    "Postgres": "Host=localhost;Port=5432;Database=ocn;Username=ocn;Password=ocn_secret",
-    "Redis":    "localhost:6379"
+    "DefaultConnection": "Host=localhost;Port=15432;Database=ewallet_db;Username=ewallet;Password=ewallet_secret",
+    "Redis": "localhost:6379"
   },
   "Jwt": {
-    "SecretKey":         "your-256-bit-secret-here",
-    "Issuer":            "ocn-api",
-    "Audience":          "ocn-client",
-    "ExpiryMinutes":     15,
-    "RefreshExpiryDays": 7
+    "Secret": "CHANGE_ME_IN_PRODUCTION_USE_ENV_VAR_256_BITS_MINIMUM",
+    "Issuer": "ewallet-api",
+    "Audience": "ewallet-client",
+    "AccessTokenExpiryMinutes": 15,
+    "RefreshTokenExpiryDays": 7
   }
 }
 ```
@@ -147,17 +147,41 @@ dotnet ef database update \
 
 ```bash
 dotnet run --project src/EWallet.API
-# API:       https://localhost:7080
-# Swagger:   https://localhost:7080/swagger
-# Hangfire:  https://localhost:7080/hangfire
-# SignalR:   https://localhost:7080/hubs/wallet
+# API:       http://localhost:5002
+# Swagger:   http://localhost:5002/swagger
+# Hangfire:  http://localhost:5002/hangfire
+# SignalR:   http://localhost:5002/hubs/wallet
 ```
 
 ### 5 — Start the Blazor client
 
 ```bash
 dotnet run --project src/EWallet.BlazorClient
-# Client:    https://localhost:7180
+# Client:    http://localhost:5001
+```
+
+### 6 — Quick auth smoke test
+
+If you run auth curl commands with a password containing `!`, disable bash history expansion first:
+
+```bash
+set +H
+```
+
+Then run:
+
+```bash
+TS=$(date +%s)
+EMAIL="test${TS}@example.com"
+PHONE="+1555${TS: -7}"
+
+curl -sS -i -X POST http://localhost:5002/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"$EMAIL\",\"phoneNumber\":\"$PHONE\",\"fullName\":\"Test User\",\"password\":\"Test@1234!\",\"confirmPassword\":\"Test@1234!\"}"
+
+curl -sS -i -X POST http://localhost:5002/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"$EMAIL\",\"password\":\"Test@1234!\"}"
 ```
 
 ---

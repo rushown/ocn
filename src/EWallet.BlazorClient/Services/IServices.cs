@@ -4,6 +4,7 @@ namespace EWallet.BlazorClient.Services;
 
 public interface IAuthService
 {
+    string? LastError { get; }
     Task<AuthResponse?> LoginAsync(LoginRequest request);
     Task<AuthResponse?> RegisterAsync(RegisterRequest request);
     Task LogoutAsync();
@@ -14,6 +15,7 @@ public interface IAuthService
 
 public interface IWalletService
 {
+    string? LastError { get; }
     Task<WalletBalanceDto?> GetBalanceAsync();
     Task<TransactionDto?> DepositAsync(DepositRequest request, string idempotencyKey);
     Task<TransactionDto?> WithdrawAsync(WithdrawRequest request, string idempotencyKey);

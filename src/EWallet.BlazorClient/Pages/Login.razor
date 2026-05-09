@@ -98,6 +98,6 @@
         if (result is not null)
             Navigation.NavigateTo("/dashboard");
         else
-            _errorMessage = "Invalid email or password. Please try again.";
+            _errorMessage = AuthService.LastError ?? "Invalid email or password. Please try again.";
     }
 }

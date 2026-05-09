@@ -41,6 +41,16 @@ public class WalletController : ControllerBase
         return result.IsSuccess ? Ok(result.Value) : NotFound();
     }
 
+    /// <summary>Lookup recipient wallet metadata by wallet id</summary>
+    [HttpGet("lookup/{walletId:guid}")]
+    [ProducesResponseType(typeof(WalletLookupDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<WalletLookupDto>> LookupWallet(Guid walletId, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetWalletLookupQuery(walletId), ct);
+        return result.IsSuccess ? Ok(result.Value) : NotFound();
+    }
+
     /// <summary>Deposit funds to wallet</summary>
     [HttpPost("deposit")]
     [ServiceFilter(typeof(IdempotencyFilter))]

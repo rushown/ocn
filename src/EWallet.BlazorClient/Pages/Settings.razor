@@ -5,6 +5,7 @@
 @inject IAuthService AuthService
 @inject IHttpClientFactory HttpClientFactory
 @inject ISnackbar Snackbar
+@using System.Text.Json
 
 <PageTitle>Settings — EWallet</PageTitle>
 
@@ -202,8 +203,9 @@
                         <MudButton Variant="Variant.Outlined"
                                    Color="Color.Primary"
                                    FullWidth="true"
+                                   Disabled="true"
                                    aria-label="Upgrade KYC verification">
-                            Upgrade KYC Level
+                            KYC Upgrade Coming Soon
                         </MudButton>
                     }
                 }
@@ -256,7 +258,7 @@
             if (response.IsSuccessStatusCode)
                 Snackbar.Add("Profile updated successfully!", Severity.Success);
             else
-                Snackbar.Add("Failed to update profile. Please try again.", Severity.Error);
+                Snackbar.Add(await ReadErrorAsync(response, "Failed to update profile. Please try again."), Severity.Error);
         }
         finally
         {
@@ -286,7 +288,7 @@
             }
             else
             {
-                Snackbar.Add("Failed to change password. Check your current password.", Severity.Error);
+                Snackbar.Add(await ReadErrorAsync(response, "Failed to change password. Check your current password."), Severity.Error);
             }
         }
         finally
@@ -297,8 +299,60 @@
 
     private async Task Toggle2FA()
     {
-        Snackbar.Add(_twoFactorEnabled ? "2FA enabled." : "2FA disabled.", Severity.Info);
-        // In full impl: call API to enable/disable 2FA
+        if (!_twoFactorEnabled)
+        {
+            // Disable endpoint is not available in this MVP yet.
+            _twoFactorEnabled = true;
+            Snackbar.Add("Disabling 2FA is not available yet.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var http = HttpClientFactory.CreateClient("EWalletApi");
+            var response = await http.PostAsync("/api/user/enable-2fa", null);
+            if (!response.IsSuccessStatusCode)
+            {
+                _twoFactorEnabled = false;
+                Snackbar.Add(await ReadErrorAsync(response, "Failed to enable 2FA. Please try again."), Severity.Error);
+                return;
+            }
+
+            _user = await AuthService.GetCurrentUserAsync();
+            Snackbar.Add("2FA enabled successfully.", Severity.Success);
+        }
+        catch
+        {
+            _twoFactorEnabled = false;
+            Snackbar.Add("Network error while enabling 2FA.", Severity.Error);
+        }
+    }
+
+    private static async Task<string> ReadErrorAsync(HttpResponseMessage response, string fallback)
+    {
+        try
+        {
+            using var stream = await response.Content.ReadAsStreamAsync();
+            var json = await JsonDocument.ParseAsync(stream);
+
+            if (json.RootElement.TryGetProperty("detail", out var detail) &&
+                !string.IsNullOrWhiteSpace(detail.GetString()))
+            {
+                return detail.GetString()!;
+            }
+
+            if (json.RootElement.TryGetProperty("title", out var title) &&
+                !string.IsNullOrWhiteSpace(title.GetString()))
+            {
+                return title.GetString()!;
+            }
+        }
+        catch
+        {
+            // fallback
+        }
+
+        return fallback;
     }
 
     private static (string label, Color color, string icon) GetKycInfo(int level) => level switch

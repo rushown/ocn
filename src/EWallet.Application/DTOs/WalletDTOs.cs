@@ -46,6 +46,11 @@ public record BalanceDto(
     string Currency,
     decimal AvailableLimit);
 
+public record WalletLookupDto(
+    Guid WalletId,
+    string OwnerName,
+    string Currency);
+
 public record PagedTransactionRequest(
     int Page = 1,
     int PageSize = 20);

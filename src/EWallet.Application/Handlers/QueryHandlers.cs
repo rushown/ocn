@@ -135,6 +135,42 @@ public class GetTransactionByIdQueryHandler : IRequestHandler<GetTransactionById
     }
 }
 
+public class GetWalletLookupQueryHandler : IRequestHandler<GetWalletLookupQuery, Result<WalletLookupDto>>
+{
+    private readonly IUnitOfWork _uow;
+    private readonly ILogger<GetWalletLookupQueryHandler> _logger;
+
+    public GetWalletLookupQueryHandler(IUnitOfWork uow, ILogger<GetWalletLookupQueryHandler> logger)
+    {
+        _uow = uow;
+        _logger = logger;
+    }
+
+    public async Task<Result<WalletLookupDto>> Handle(GetWalletLookupQuery request, CancellationToken ct)
+    {
+        try
+        {
+            var wallet = await _uow.Wallets.GetByIdAsync(request.WalletId, ct);
+            if (wallet is null)
+                return Result<WalletLookupDto>.Failure("Wallet not found.", ErrorCodes.WalletNotFound);
+
+            var user = await _uow.Users.GetByIdAsync(wallet.UserId, ct);
+            if (user is null)
+                return Result<WalletLookupDto>.Failure("Wallet owner not found.", ErrorCodes.UserNotFound);
+
+            return Result<WalletLookupDto>.Success(new WalletLookupDto(
+                wallet.Id,
+                user.FullName,
+                wallet.Balance.Currency));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error looking up wallet {WalletId}", request.WalletId);
+            return Result<WalletLookupDto>.Failure("Failed to lookup wallet.");
+        }
+    }
+}
+
 public class GetUserProfileQueryHandler : IRequestHandler<GetUserProfileQuery, Result<UserProfileDto>>
 {
     private readonly IUnitOfWork _uow;

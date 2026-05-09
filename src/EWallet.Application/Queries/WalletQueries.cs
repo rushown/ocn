@@ -16,5 +16,8 @@ public record GetTransactionByIdQuery(
     Guid TransactionId,
     Guid UserId) : IRequest<Result<TransactionDto>>;
 
+public record GetWalletLookupQuery(
+    Guid WalletId) : IRequest<Result<WalletLookupDto>>;
+
 public record GetUserProfileQuery(
     Guid UserId) : IRequest<Result<UserProfileDto>>;

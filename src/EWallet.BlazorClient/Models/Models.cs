@@ -48,7 +48,7 @@ public record DepositRequest(decimal Amount, string Currency, string? Descriptio
 public record WithdrawRequest(decimal Amount, string Currency, string? Description);
 
 public record TransferRequest(
-    Guid ReceiverWalletId,
+    Guid RecipientWalletId,
     decimal Amount,
     string Currency,
     string? Description,

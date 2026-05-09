@@ -10,6 +10,7 @@ public class AuthService : IAuthService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILocalStorageService _storage;
     private readonly CustomAuthStateProvider _authStateProvider;
+    public string? LastError { get; private set; }
 
     public AuthService(
         IHttpClientFactory httpClientFactory,
@@ -25,11 +26,15 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse?> LoginAsync(LoginRequest request)
     {
+        LastError = null;
         try
         {
             var response = await PublicClient.PostAsJsonAsync("/api/auth/login", request);
             if (!response.IsSuccessStatusCode)
+            {
+                LastError = await ReadErrorAsync(response, "Login failed.");
                 return null;
+            }
 
             var auth = await response.Content.ReadFromJsonAsync<AuthResponse>();
             if (auth is null)
@@ -40,17 +45,22 @@ public class AuthService : IAuthService
         }
         catch
         {
+            LastError = "Network error while trying to login.";
             return null;
         }
     }
 
     public async Task<AuthResponse?> RegisterAsync(RegisterRequest request)
     {
+        LastError = null;
         try
         {
             var response = await PublicClient.PostAsJsonAsync("/api/auth/register", request);
             if (!response.IsSuccessStatusCode)
+            {
+                LastError = await ReadErrorAsync(response, "Registration failed.");
                 return null;
+            }
 
             // Auto-login after registration
             var auth = await response.Content.ReadFromJsonAsync<AuthResponse>();
@@ -62,6 +72,7 @@ public class AuthService : IAuthService
         }
         catch
         {
+            LastError = "Network error while trying to register.";
             return null;
         }
     }
@@ -122,6 +133,7 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse?> RefreshTokenAsync()
     {
+        LastError = null;
         try
         {
             var response = await PublicClient.PostAsJsonAsync(
@@ -131,6 +143,7 @@ public class AuthService : IAuthService
             if (!response.IsSuccessStatusCode)
             {
                 await _storage.RemoveItemAsync("access_token");
+                LastError = await ReadErrorAsync(response, "Session expired. Please log in again.");
                 return null;
             }
 
@@ -143,8 +156,36 @@ public class AuthService : IAuthService
         }
         catch
         {
+            LastError = "Failed to refresh session.";
             return null;
         }
+    }
+
+    private static async Task<string> ReadErrorAsync(HttpResponseMessage response, string fallback)
+    {
+        try
+        {
+            using var stream = await response.Content.ReadAsStreamAsync();
+            var json = await JsonDocument.ParseAsync(stream);
+
+            if (json.RootElement.TryGetProperty("detail", out var detail) &&
+                !string.IsNullOrWhiteSpace(detail.GetString()))
+            {
+                return detail.GetString()!;
+            }
+
+            if (json.RootElement.TryGetProperty("title", out var title) &&
+                !string.IsNullOrWhiteSpace(title.GetString()))
+            {
+                return title.GetString()!;
+            }
+        }
+        catch
+        {
+            // Ignore parsing errors and use fallback.
+        }
+
+        return fallback;
     }
 
     private async Task PersistTokensAsync(AuthResponse auth)
