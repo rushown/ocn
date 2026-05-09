@@ -9,12 +9,12 @@
 @inject IState<WalletState> WalletState
 
 <MudStepper @ref="_stepper"
-            ActiveStep="@_activeStep"
+            @bind-ActiveIndex="_activeStep"
             NonLinear="false"
             Class="mb-4">
 
     <!-- Step 1: Recipient -->
-    <MudStep Title="Recipient" Icon="@Icons.Material.Filled.Person">
+    <MudStep Title="Recipient">
         <MudText Typo="Typo.h6" GutterBottom="true">Find Recipient</MudText>
 
         <MudTextField @bind-Value="_receiverWalletIdStr"
@@ -68,7 +68,7 @@
     </MudStep>
 
     <!-- Step 2: Amount -->
-    <MudStep Title="Amount" Icon="@Icons.Material.Filled.AttachMoney">
+    <MudStep Title="Amount">
         <MudText Typo="Typo.h6" GutterBottom="true">Enter Amount</MudText>
 
         <MudSelect @bind-Value="_currency"
@@ -136,7 +136,7 @@
     </MudStep>
 
     <!-- Step 3: Confirm + OTP -->
-    <MudStep Title="Confirm" Icon="@Icons.Material.Filled.FactCheck">
+    <MudStep Title="Confirm">
         <MudText Typo="Typo.h6" GutterBottom="true">Review & Confirm</MudText>
 
         <MudPaper Outlined="true" Class="pa-4 mb-4" Style="border-radius: 12px;">
@@ -206,7 +206,7 @@
     </MudStep>
 
     <!-- Step 4: Result -->
-    <MudStep Title="Result" Icon="@Icons.Material.Filled.CheckCircle">
+    <MudStep Title="Result">
         @if (_completedTransaction is not null)
         {
             <div class="d-flex flex-column align-center py-6">

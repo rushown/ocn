@@ -13,7 +13,7 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 
 // Determine API base URL
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"]
-    ?? builder.HostEnvironment.BaseAddress.Replace(":5001", ":5000");
+    ?? builder.HostEnvironment.BaseAddress.Replace(":5001", ":5002");
 
 // Register AuthorizationMessageHandler (DelegatingHandler)
 builder.Services.AddScoped<AuthorizationMessageHandler>();
