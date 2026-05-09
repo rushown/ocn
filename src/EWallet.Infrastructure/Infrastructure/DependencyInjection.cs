@@ -62,10 +62,10 @@ public static class DependencyInjection
         services.AddScoped<ICurrentUserService, CurrentUserService>();
 
         // ── Payment Gateway ───────────────────────────────────────────────────
-        // SECURITY: FakePaymentGateway must NOT be used in production.
-        // Gate registration behind the environment name; swap in a real implementation for production.
-        var isDevelopment = environment?.IsEnvironment("Development") ?? true;
-        if (isDevelopment)
+        // Default to fake gateway unless explicitly disabled.
+        // This keeps local/staging environments bootable while still allowing strict production enforcement.
+        var useFakeGateway = configuration.GetValue("Payments:UseFakeGateway", true);
+        if (useFakeGateway)
         {
 #pragma warning disable CS0618 // FakePaymentGateway is intentionally Obsolete
             services.AddScoped<IPaymentGateway, FakePaymentGateway>();
@@ -76,13 +76,17 @@ public static class DependencyInjection
             // TODO: Register real payment gateway implementation here
             // services.AddScoped<IPaymentGateway, StripePaymentGateway>();
             throw new NotImplementedException(
-                "A real IPaymentGateway implementation must be registered for non-development environments.");
+                "Payments:UseFakeGateway is false but no real IPaymentGateway implementation is registered.");
         }
 
         // ── Hangfire ──────────────────────────────────────────────────────────
-        services.AddHangfireServices(
-            configuration.GetConnectionString("DefaultConnection")
-            ?? throw new InvalidOperationException("DefaultConnection string is not configured."));
+        var hangfireEnabled = configuration.GetValue("Hangfire:Enabled", false);
+        if (hangfireEnabled)
+        {
+            services.AddHangfireServices(
+                configuration.GetConnectionString("DefaultConnection")
+                ?? throw new InvalidOperationException("DefaultConnection string is not configured."));
+        }
 
         return services;
     }

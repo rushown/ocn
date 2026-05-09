@@ -117,21 +117,31 @@ try
     app.MapHub<WalletHub>("/hubs/wallet");
     app.MapHealthChecks("/health");
 
-    // Hangfire dashboard — protected in non-dev environments
-    app.MapHangfireDashboard("/hangfire", new DashboardOptions
+    var hangfireEnabled = builder.Configuration.GetValue("Hangfire:Enabled", false);
+    if (hangfireEnabled)
     {
-        Authorization = app.Environment.IsDevelopment()
-            ? new[] { new Hangfire.Dashboard.LocalRequestsOnlyAuthorizationFilter() }
-            : new[] { new HangfireAdminRoleFilter() }
-    });
+        // Hangfire can fail hard when storage is misconfigured.
+        // Keep API bootable and log the issue instead of terminating the whole process.
+        try
+        {
+            app.MapHangfireDashboard("/hangfire", new DashboardOptions
+            {
+                Authorization = app.Environment.IsDevelopment()
+                    ? new[] { new Hangfire.Dashboard.LocalRequestsOnlyAuthorizationFilter() }
+                    : new[] { new HangfireAdminRoleFilter() }
+            });
 
-    // ─── Recurring jobs ───────────────────────────────────────────────────────
-    using (var scope = app.Services.CreateScope())
-    {
-        RecurringJob.AddOrUpdate<TransactionCleanupJob>(
-            "transaction-cleanup",
-            job => job.ExecuteAsync(CancellationToken.None),
-            Cron.Daily(2)); // 02:00 UTC daily
+            // ─── Recurring jobs ───────────────────────────────────────────────
+            using var scope = app.Services.CreateScope();
+            RecurringJob.AddOrUpdate<TransactionCleanupJob>(
+                "transaction-cleanup",
+                job => job.ExecuteAsync(CancellationToken.None),
+                Cron.Daily(2)); // 02:00 UTC daily
+        }
+        catch (Exception hangfireEx)
+        {
+            Log.Error(hangfireEx, "Hangfire initialization failed. API will continue without background jobs/dashboard.");
+        }
     }
 
     app.Run();
