@@ -1,6 +1,7 @@
-using EWallet.Application.User.Commands;
-using EWallet.Application.User.DTOs;
-using EWallet.Application.User.Queries;
+using EWallet.API.Models;
+using EWallet.Application.Commands;
+using EWallet.Application.DTOs;
+using EWallet.Application.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -41,7 +42,7 @@ public class UserController : ControllerBase
     [ProducesResponseType(typeof(UserProfileDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<UserProfileDto>> UpdateProfile(
-        [FromBody] UpdateProfileRequest request,
+        [FromBody] EWallet.API.Models.UpdateProfileRequest request,
         CancellationToken ct)
     {
         var userId = GetCurrentUserId();
@@ -63,11 +64,11 @@ public class UserController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ChangePassword(
-        [FromBody] ChangePasswordRequest request,
+        [FromBody] EWallet.API.Models.ChangePasswordRequest request,
         CancellationToken ct)
     {
         var userId = GetCurrentUserId();
-        var command = new ChangePasswordCommand(userId, request.CurrentPassword, request.NewPassword);
+        var command = new ChangePasswordCommand(userId, request.CurrentPassword, request.NewPassword, request.ConfirmNewPassword);
         var result = await _mediator.Send(command, ct);
 
         if (!result.IsSuccess)
@@ -109,7 +110,7 @@ public class UserController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> VerifyOtp(
-        [FromBody] VerifyOtpRequest request,
+        [FromBody] EWallet.API.Models.VerifyOtpRequest request,
         CancellationToken ct)
     {
         var userId = GetCurrentUserId();

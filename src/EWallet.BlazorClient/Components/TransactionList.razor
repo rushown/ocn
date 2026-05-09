@@ -34,7 +34,8 @@
         </MudTd>
 
         <MudTd DataLabel="Type">
-            <MudChip Size="Size.Small"
+            <MudChip T="string"
+                     Size="Size.Small"
                      Icon="@GetTypeIcon(context.Type)"
                      Color="@GetTypeColor(context.Type)"
                      Variant="Variant.Outlined">
@@ -50,7 +51,8 @@
         </MudTd>
 
         <MudTd DataLabel="Status">
-            <MudChip Size="Size.Small"
+            <MudChip T="string"
+                     Size="Size.Small"
                      Color="@GetStatusColor(context.Status)"
                      Variant="Variant.Filled">
                 @context.Status

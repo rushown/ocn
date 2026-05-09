@@ -33,7 +33,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
 
         try
         {
-            var existingUser = await _uow.Users.FindByEmailAsync(request.Email, ct);
+            var existingUser = await _uow.Users.GetByEmailAsync(request.Email, ct);
             if (existingUser is not null)
                 return Result<AuthResponse>.Failure("Email is already in use.", ErrorCodes.UserNotFound);
 

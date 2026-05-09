@@ -6,7 +6,8 @@ public record RegisterRequest(
     string Email,
     string PhoneNumber,
     string FullName,
-    string Password);
+    string Password,
+    string ConfirmPassword);
 
 public record LoginRequest(
     string Email,
@@ -22,16 +23,19 @@ public record LogoutRequest(
 
 public record DepositRequest(
     decimal Amount,
-    string Currency = "USD");
+    string Currency = "USD",
+    string ExternalRef = "");
 
 public record WithdrawRequest(
     decimal Amount,
-    string Currency = "USD");
+    string Currency = "USD",
+    string ExternalRef = "");
 
 public record TransferRequest(
     Guid RecipientWalletId,
     decimal Amount,
     string Currency = "USD",
+    string? Description = null,
     string? OtpCode = null);
 
 // ─── User ─────────────────────────────────────────────────────────────────────
@@ -42,7 +46,8 @@ public record UpdateProfileRequest(
 
 public record ChangePasswordRequest(
     string CurrentPassword,
-    string NewPassword);
+    string NewPassword,
+    string ConfirmNewPassword);
 
 public record VerifyOtpRequest(
     string OtpCode,

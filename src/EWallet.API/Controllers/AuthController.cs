@@ -1,5 +1,6 @@
-using EWallet.Application.Auth.Commands;
-using EWallet.Application.Auth.DTOs;
+using EWallet.API.Models;
+using EWallet.Application.Commands;
+using EWallet.Application.DTOs;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -27,14 +28,15 @@ public class AuthController : ControllerBase
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<AuthResponse>> Register(
-        [FromBody] RegisterRequest request,
+        [FromBody] EWallet.API.Models.RegisterRequest request,
         CancellationToken ct)
     {
         var command = new RegisterCommand(
             request.Email,
             request.PhoneNumber,
             request.FullName,
-            request.Password);
+            request.Password,
+            request.ConfirmPassword);
 
         var result = await _mediator.Send(command, ct);
 
@@ -53,7 +55,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<AuthResponse>> Login(
-        [FromBody] LoginRequest request,
+        [FromBody] EWallet.API.Models.LoginRequest request,
         CancellationToken ct)
     {
         var command = new LoginCommand(request.Email, request.Password);
@@ -78,7 +80,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<AuthResponse>> RefreshToken(
-        [FromBody] RefreshTokenRequest request,
+        [FromBody] EWallet.API.Models.RefreshTokenRequest request,
         CancellationToken ct)
     {
         var command = new RefreshTokenCommand(request.RefreshToken);
@@ -100,11 +102,11 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Logout(
-        [FromBody] LogoutRequest request,
+        [FromBody] EWallet.API.Models.LogoutRequest request,
         CancellationToken ct)
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        var command = new LogoutCommand(userId, request.RefreshToken);
+        var command = new LogoutCommand(userId);
         await _mediator.Send(command, ct);
 
         _logger.LogInformation("User {UserId} logged out", userId);

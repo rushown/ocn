@@ -1,4 +1,4 @@
-using EWallet.Application.Common.Exceptions;
+using EWallet.Domain.Exceptions;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
@@ -44,16 +44,6 @@ public class GlobalExceptionHandler : IExceptionHandler
             WalletLockedException =>
                 (StatusCodes.Status403Forbidden,
                  "Wallet Locked",
-                 exception.Message),
-
-            OtpRequiredException =>
-                (StatusCodes.Status403Forbidden,
-                 "OTP Required",
-                 exception.Message),
-
-            OtpVerificationFailedException =>
-                (StatusCodes.Status400BadRequest,
-                 "OTP Verification Failed",
                  exception.Message),
 
             DbUpdateConcurrencyException =>

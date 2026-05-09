@@ -3,6 +3,7 @@ using EWallet.Domain.Enums;
 using EWallet.Infrastructure.Interfaces;
 using EWallet.Infrastructure.Persistence;
 using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

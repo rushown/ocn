@@ -31,7 +31,8 @@
         <!-- User avatar -->
         @if (_userName is not null)
         {
-            <MudChip Icon="@Icons.Material.Filled.Person"
+            <MudChip T="string"
+                     Icon="@Icons.Material.Filled.Person"
                      Color="Color.Primary"
                      Class="mx-2 d-none d-sm-flex"
                      aria-label="Current user">

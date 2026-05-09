@@ -20,14 +20,13 @@
     <PackageReference Include="AutoFixture.AutoMoq" Version="4.18.0" />
     <PackageReference Include="MediatR" Version="12.2.0" />
     <PackageReference Include="AutoMapper" Version="13.0.1" />
-    <PackageReference Include="FluentValidation.TestHelper" Version="11.8.0" />
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Reference the Application project being tested -->
-    <!-- <ProjectReference Include="..\EWallet.Application\EWallet.Application.csproj" /> -->
+    <ProjectReference Include="..\..\src\EWallet.Application\EWallet.Application.csproj" />
   </ItemGroup>
 
 </Project>

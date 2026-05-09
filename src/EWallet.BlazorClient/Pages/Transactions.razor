@@ -22,7 +22,8 @@
     <div class="d-flex gap-2 flex-wrap" role="group" aria-label="Filter by type">
         @foreach (var filter in _filters)
         {
-            <MudChip Color="@(_selectedFilter == filter ? Color.Primary : Color.Default)"
+            <MudChip T="string"
+                     Color="@(_selectedFilter == filter ? Color.Primary : Color.Default)"
                      Variant="@(_selectedFilter == filter ? Variant.Filled : Variant.Outlined)"
                      OnClick="@(() => ApplyFilter(filter))"
                      Size="Size.Small"
@@ -82,11 +83,12 @@
 
     protected override void OnInitialized()
     {
-        WalletState.StateChanged += OnStateChanged;
+        _onStateChanged = (_, _) => InvokeAsync(StateHasChanged);
+        WalletState.StateChanged += _onStateChanged;
         LoadTransactions();
     }
 
-    private void OnStateChanged(object? sender, WalletState state) => InvokeAsync(StateHasChanged);
+    private EventHandler? _onStateChanged;
 
     private void LoadTransactions()
     {
@@ -107,5 +109,9 @@
         LoadTransactions();
     }
 
-    public void Dispose() => WalletState.StateChanged -= OnStateChanged;
+    public void Dispose()
+    {
+        if (_onStateChanged is not null)
+            WalletState.StateChanged -= _onStateChanged;
+    }
 }

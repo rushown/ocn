@@ -40,7 +40,7 @@ public class WithdrawCommandHandler : IRequestHandler<WithdrawCommand, Result<Tr
 
         try
         {
-            var wallet = await _uow.Wallets.FindByUserIdAsync(request.UserId, ct);
+            var wallet = await _uow.Wallets.GetByUserIdAsync(request.UserId, ct);
             if (wallet is null)
                 return Result<TransactionDto>.Failure("Wallet not found.", ErrorCodes.WalletNotFound);
 
@@ -64,8 +64,14 @@ public class WithdrawCommandHandler : IRequestHandler<WithdrawCommand, Result<Tr
                 transaction = Transaction.Create(wallet.Id, money, TransactionType.Withdrawal, request.IdempotencyKey);
                 transaction.Complete();
 
-                var audit = AuditLog.Create(wallet.Id, "WITHDRAWAL",
-                    $"Withdrew {money}. GatewayRef={gatewayResult.TransactionRef}");
+                var audit = AuditLog.Create(
+                    entityId: wallet.Id,
+                    entityType: "Wallet",
+                    action: "WITHDRAWAL",
+                    oldValues: null,
+                    newValues: $"{{\"amount\":\"{money}\",\"gatewayRef\":\"{gatewayResult.TransactionRef}\"}}",
+                    userId: request.UserId,
+                    ip: "system");
                 await _uow.AuditLogs.AddAsync(audit, ct);
             }
             else

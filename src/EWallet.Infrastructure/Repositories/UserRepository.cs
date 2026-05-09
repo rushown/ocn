@@ -1,5 +1,6 @@
 using EWallet.Domain.Entities;
 using EWallet.Domain.Interfaces;
+using EWallet.Domain.Enums;
 using EWallet.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -31,4 +32,26 @@ public sealed class UserRepository : BaseRepository<User>, IUserRepository
             .FirstOrDefaultAsync(
                 u => u.RefreshToken == token && u.RefreshTokenExpiry > DateTime.UtcNow,
                 ct);
+
+    /// <inheritdoc />
+    public async Task<bool> ValidateOtpAsync(Guid userId, string code, OtpPurpose purpose, CancellationToken ct = default)
+    {
+        if (userId == Guid.Empty) return false;
+        if (string.IsNullOrWhiteSpace(code)) return false;
+
+        var otp = await _context.OtpRecords
+            .FirstOrDefaultAsync(o =>
+                o.UserId == userId &&
+                o.Code == code &&
+                o.Purpose == purpose &&
+                !o.IsUsed &&
+                o.ExpiresAt > DateTime.UtcNow,
+                ct);
+
+        if (otp is null)
+            return false;
+
+        otp.MarkUsed();
+        return true;
+    }
 }

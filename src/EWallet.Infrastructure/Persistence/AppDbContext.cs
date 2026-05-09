@@ -65,7 +65,7 @@ public class AppDbContext : DbContext
             .ToList();
 
         var domainEvents = domainEventEntities
-            .SelectMany(e => e.Entity.DomainEvents)
+            .SelectMany(e => e.DomainEvents)
             .ToList();
 
         // Clear events from aggregates before saving to avoid re-publishing on retry

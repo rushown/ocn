@@ -190,11 +190,12 @@
     private string? _firstName;
 
     private IReadOnlyList<TransactionDto> RecentTransactions =>
-        WalletState.Value.Transactions?.Items.Take(5).ToList() ?? Array.Empty<TransactionDto>();
+        WalletState.Value.Transactions?.Items.Take(5).ToList() ?? new List<TransactionDto>();
 
     protected override async Task OnInitializedAsync()
     {
-        WalletState.StateChanged += OnStateChanged;
+        _onStateChanged = (_, _) => InvokeAsync(StateHasChanged);
+        WalletState.StateChanged += _onStateChanged;
 
         Dispatcher.Dispatch(new FetchBalanceAction());
         Dispatcher.Dispatch(new FetchTransactionsAction(1, 20));
@@ -212,7 +213,7 @@
         }
     }
 
-    private void OnStateChanged(object? sender, WalletState state) => InvokeAsync(StateHasChanged);
+    private EventHandler? _onStateChanged;
 
     private void OnBalanceUpdated(decimal balance, string currency) =>
         Dispatcher.Dispatch(new BalanceUpdatedFromSignalRAction(balance, currency));
@@ -259,7 +260,8 @@
 
     public void Dispose()
     {
-        WalletState.StateChanged -= OnStateChanged;
+        if (_onStateChanged is not null)
+            WalletState.StateChanged -= _onStateChanged;
         SignalR.OnBalanceUpdated -= OnBalanceUpdated;
         SignalR.OnTransactionUpdated -= OnTransactionUpdated;
     }

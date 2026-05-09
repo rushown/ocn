@@ -40,7 +40,7 @@ public class DepositCommandHandler : IRequestHandler<DepositCommand, Result<Tran
 
         try
         {
-            var wallet = await _uow.Wallets.FindByUserIdAsync(request.UserId, ct);
+            var wallet = await _uow.Wallets.GetByUserIdAsync(request.UserId, ct);
             if (wallet is null)
                 return Result<TransactionDto>.Failure("Wallet not found.", ErrorCodes.WalletNotFound);
 
@@ -63,8 +63,14 @@ public class DepositCommandHandler : IRequestHandler<DepositCommand, Result<Tran
                 transaction = Transaction.Create(wallet.Id, money, TransactionType.Deposit, request.IdempotencyKey);
                 transaction.Complete();
 
-                var audit = AuditLog.Create(wallet.Id, "DEPOSIT",
-                    $"Deposited {money}. GatewayRef={gatewayResult.TransactionRef}");
+                var audit = AuditLog.Create(
+                    entityId: wallet.Id,
+                    entityType: "Wallet",
+                    action: "DEPOSIT",
+                    oldValues: null,
+                    newValues: $"{{\"amount\":\"{money}\",\"gatewayRef\":\"{gatewayResult.TransactionRef}\"}}",
+                    userId: request.UserId,
+                    ip: "system");
                 await _uow.AuditLogs.AddAsync(audit, ct);
             }
             else

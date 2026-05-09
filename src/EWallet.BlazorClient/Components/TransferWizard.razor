@@ -252,6 +252,8 @@
 </MudStepper>
 
 @code {
+    private MudStepper? _stepper;
+
     [Parameter] public EventCallback<TransactionDto> OnTransferComplete { get; set; }
 
     private int _activeStep = 0;

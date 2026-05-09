@@ -43,6 +43,31 @@ public sealed class TransactionRepository : BaseRepository<Transaction>, ITransa
             .FirstOrDefaultAsync(t => t.IdempotencyKey == key, ct);
 
     /// <inheritdoc />
+    public async Task<(IReadOnlyList<Transaction> Transactions, int TotalCount)> GetPagedByWalletIdAsync(
+        Guid walletId,
+        int page,
+        int size,
+        CancellationToken ct = default)
+    {
+        if (page < 1) page = 1;
+        if (size < 1) size = 20;
+
+        var query = _dbSet
+            .AsNoTracking()
+            .Where(t => t.WalletId == walletId);
+
+        var total = await query.CountAsync(ct);
+
+        var items = await query
+            .OrderByDescending(t => t.CreatedAt)
+            .Skip((page - 1) * size)
+            .Take(size)
+            .ToListAsync(ct);
+
+        return (items, total);
+    }
+
+    /// <inheritdoc />
     public async Task<decimal> GetDailyDebitSumAsync(
         Guid walletId,
         DateTime date,

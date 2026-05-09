@@ -1,7 +1,6 @@
-using EWallet.Application.Admin.Commands;
-using EWallet.Application.Admin.DTOs;
-using EWallet.Application.Admin.Queries;
-using EWallet.Application.Common.Models;
+using EWallet.API.Models;
+using EWallet.Application.Commands;
+using EWallet.Application.Common;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -79,23 +78,5 @@ public class AdminController : ControllerBase
 
         _logger.LogInformation("Admin unlocked wallet {WalletId}", walletId);
         return NoContent();
-    }
-
-    /// <summary>Get paginated audit logs — filterable by user, action type, and date range</summary>
-    [HttpGet("audit-logs")]
-    [ProducesResponseType(typeof(PagedResult<AuditLogDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<PagedResult<AuditLogDto>>> GetAuditLogs(
-        [FromQuery] Guid? userId,
-        [FromQuery] string? actionType,
-        [FromQuery] DateTime? from,
-        [FromQuery] DateTime? to,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 50,
-        CancellationToken ct = default)
-    {
-        var query = new GetAuditLogsQuery(userId, actionType, from, to, page, pageSize);
-        var result = await _mediator.Send(query, ct);
-
-        return Ok(result);
     }
 }

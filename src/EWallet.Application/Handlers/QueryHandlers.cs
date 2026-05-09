@@ -3,6 +3,7 @@ using EWallet.Application.Common;
 using EWallet.Application.DTOs;
 using EWallet.Application.Interfaces;
 using EWallet.Application.Queries;
+using EWallet.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -22,12 +23,12 @@ public class GetWalletBalanceQueryHandler : IRequestHandler<GetWalletBalanceQuer
     {
         try
         {
-            var wallet = await _uow.Wallets.FindByUserIdAsync(request.UserId, ct);
+            var wallet = await _uow.Wallets.GetByUserIdAsync(request.UserId, ct);
             if (wallet is null)
                 return Result<BalanceDto>.Failure("Wallet not found.", ErrorCodes.WalletNotFound);
 
             var user = await _uow.Users.GetByIdAsync(request.UserId, ct);
-            var dailySpent = await _uow.Transactions.GetDailyTransferTotalAsync(wallet.Id, DateTime.UtcNow.Date, ct);
+            var dailySpent = await _uow.Transactions.GetDailyDebitSumAsync(wallet.Id, DateTime.UtcNow.Date, ct);
 
             // Determine available limit from KYC level (simplified)
             decimal dailyLimit = 500m; // default
@@ -73,13 +74,12 @@ public class GetTransactionHistoryQueryHandler : IRequestHandler<GetTransactionH
     {
         try
         {
-            var wallet = await _uow.Wallets.FindByUserIdAsync(request.UserId, ct);
+            var wallet = await _uow.Wallets.GetByUserIdAsync(request.UserId, ct);
             if (wallet is null)
                 return Result<PagedResult<TransactionDto>>.Failure("Wallet not found.", ErrorCodes.WalletNotFound);
 
             var pageSize = Math.Min(request.PageSize, 100);
-            var (transactions, total) = await _uow.Transactions.GetPagedByWalletIdAsync(
-                wallet.Id, request.Page, pageSize, ct);
+            var (transactions, total) = await _uow.Transactions.GetPagedByWalletIdAsync(wallet.Id, request.Page, pageSize, ct);
 
             var dtos = _mapper.Map<List<TransactionDto>>(transactions);
 

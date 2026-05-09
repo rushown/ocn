@@ -1,4 +1,11 @@
-namespace EWallet.Domain.Tests.Domain.Wallet;
+using EWallet.Domain.Entities;
+using EWallet.Domain.Events;
+using EWallet.Domain.Exceptions;
+using EWallet.Domain.ValueObjects;
+using FluentAssertions;
+using Xunit;
+
+namespace EWallet.Domain.Tests.Domain.Entities;
 
 public sealed class WalletTests
 {
@@ -11,7 +18,7 @@ public sealed class WalletTests
     {
         var userId = Guid.NewGuid();
 
-        var wallet = Wallet.Create(userId);
+        var wallet = EWallet.Domain.Entities.Wallet.Create(userId);
 
         wallet.Balance.Amount.Should().Be(0m);
         wallet.IsLocked.Should().BeFalse();
@@ -21,7 +28,7 @@ public sealed class WalletTests
     [Fact]
     public void Create_SetsIdToNonEmpty()
     {
-        var wallet = Wallet.Create(Guid.NewGuid());
+        var wallet = EWallet.Domain.Entities.Wallet.Create(Guid.NewGuid());
         wallet.Id.Should().NotBeEmpty();
     }
 
@@ -34,7 +41,7 @@ public sealed class WalletTests
     {
         var wallet = new WalletBuilder().Build();
 
-        wallet.Credit(new Money(100m, "USD"), "deposit");
+        wallet.Credit(new EWallet.Domain.ValueObjects.Money(100m, "USD"), "deposit");
 
         wallet.Balance.Amount.Should().Be(100m);
     }
@@ -44,7 +51,7 @@ public sealed class WalletTests
     {
         var wallet = new WalletBuilder().Build();
 
-        wallet.Credit(new Money(100m, "USD"), "deposit");
+        wallet.Credit(new EWallet.Domain.ValueObjects.Money(100m, "USD"), "deposit");
 
         wallet.DomainEvents.Should().ContainSingle(e => e is WalletCreditedEvent);
     }
@@ -54,7 +61,7 @@ public sealed class WalletTests
     {
         var wallet = new WalletBuilder().Build();
 
-        var act = () => wallet.Credit(new Money(0m, "USD"), "deposit");
+        var act = () => wallet.Credit(new EWallet.Domain.ValueObjects.Money(0m, "USD"), "deposit");
 
         act.Should().Throw<DomainException>();
     }
@@ -64,7 +71,7 @@ public sealed class WalletTests
     {
         var wallet = new WalletBuilder().Locked().Build();
 
-        var act = () => wallet.Credit(new Money(10m, "USD"), "deposit");
+        var act = () => wallet.Credit(new EWallet.Domain.ValueObjects.Money(10m, "USD"), "deposit");
 
         act.Should().Throw<WalletLockedException>();
     }

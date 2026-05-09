@@ -27,7 +27,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
     {
         try
         {
-            var user = await _uow.Users.FindByRefreshTokenAsync(request.RefreshToken, ct);
+            var user = await _uow.Users.GetByRefreshTokenAsync(request.RefreshToken, ct);
             if (user is null)
                 return Result<AuthResponse>.Failure("Invalid refresh token.");
 

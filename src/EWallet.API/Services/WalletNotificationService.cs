@@ -1,6 +1,7 @@
-using EWallet.Application.Common.Interfaces;
-using EWallet.Application.Transactions.DTOs;
+using EWallet.Application.Interfaces;
 using EWallet.API.Hubs;
+using EWallet.Domain.Enums;
+using EWallet.Domain.ValueObjects;
 using Microsoft.AspNetCore.SignalR;
 
 namespace EWallet.API.Services;
@@ -26,30 +27,25 @@ public class WalletNotificationService : IWalletNotificationService
     /// Notifies the user that their wallet balance has changed.
     /// SignalR event name: "BalanceUpdated"
     /// </summary>
-    public async Task NotifyBalanceUpdatedAsync(Guid userId, decimal newBalance, CancellationToken ct = default)
+    public async Task NotifyBalanceUpdatedAsync(Guid userId, Money newBalance, CancellationToken ct)
     {
-        _logger.LogDebug("Notifying user {UserId} of balance update: {NewBalance}", userId, newBalance);
+        _logger.LogDebug("Notifying user {UserId} of balance update: {NewBalance}", userId, newBalance.Amount);
 
         await _hubContext.Clients
             .Group($"user_{userId}")
-            .SendAsync("BalanceUpdated", new { userId, newBalance, timestamp = DateTime.UtcNow }, ct);
+            .SendAsync("BalanceUpdated", new { userId, newBalance = newBalance.Amount, currency = newBalance.Currency, timestamp = DateTime.UtcNow }, ct);
     }
 
     /// <summary>
     /// Notifies the user that a transaction's status has changed.
     /// SignalR event name: "TransactionUpdated"
     /// </summary>
-    public async Task NotifyTransactionStatusChangedAsync(
-        Guid userId,
-        TransactionDto transaction,
-        CancellationToken ct = default)
+    public async Task NotifyTransactionStatusChangedAsync(Guid userId, Guid transactionId, TransactionStatus status, CancellationToken ct)
     {
-        _logger.LogDebug(
-            "Notifying user {UserId} of transaction status change: {TransactionId} → {Status}",
-            userId, transaction.Id, transaction.Status);
+        _logger.LogDebug("Notifying user {UserId} of transaction status change: {TransactionId} → {Status}", userId, transactionId, status);
 
         await _hubContext.Clients
             .Group($"user_{userId}")
-            .SendAsync("TransactionUpdated", transaction, ct);
+            .SendAsync("TransactionUpdated", new { transactionId, status = status.ToString() }, ct);
     }
 }

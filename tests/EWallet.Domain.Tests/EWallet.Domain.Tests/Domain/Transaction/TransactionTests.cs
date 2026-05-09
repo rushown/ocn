@@ -7,7 +7,7 @@ using FluentAssertions;
 using Xunit;
 using MoneyVal = EWallet.Domain.ValueObjects.Money;
 
-namespace EWallet.Domain.Tests.Domain.Transaction;
+namespace EWallet.Domain.Tests.Domain.Entities;
 
 public sealed class TransactionTests
 {

@@ -33,7 +33,7 @@ public class CreateWalletCommandHandler : IRequestHandler<CreateWalletCommand, R
             if (user is null)
                 return Result<WalletDto>.Failure("User not found.", ErrorCodes.UserNotFound);
 
-            var existing = await _uow.Wallets.FindByUserIdAsync(request.UserId, ct);
+            var existing = await _uow.Wallets.GetByUserIdAsync(request.UserId, ct);
             if (existing is not null)
                 return Result<WalletDto>.Failure("User already has a wallet.");
 

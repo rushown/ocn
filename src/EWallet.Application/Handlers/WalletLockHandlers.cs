@@ -1,6 +1,7 @@
 using EWallet.Application.Commands;
 using EWallet.Application.Common;
 using EWallet.Application.Interfaces;
+using EWallet.Domain.Entities;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -27,7 +28,14 @@ public class LockWalletCommandHandler : IRequestHandler<LockWalletCommand, Resul
 
             wallet.Lock(request.Reason);
 
-            var audit = AuditLog.Create(wallet.Id, "WALLET_LOCKED", $"Reason: {request.Reason}");
+            var audit = AuditLog.Create(
+                entityId: wallet.Id,
+                entityType: "Wallet",
+                action: "WALLET_LOCKED",
+                oldValues: null,
+                newValues: $"{{\"reason\":\"{request.Reason}\"}}",
+                userId: null,
+                ip: "system");
             await _uow.AuditLogs.AddAsync(audit, ct);
             await _uow.SaveChangesAsync(ct);
 
@@ -63,7 +71,14 @@ public class UnlockWalletCommandHandler : IRequestHandler<UnlockWalletCommand, R
 
             wallet.Unlock();
 
-            var audit = AuditLog.Create(wallet.Id, "Wallet", "WALLET_UNLOCKED", null, null, null, "");
+            var audit = AuditLog.Create(
+                entityId: wallet.Id,
+                entityType: "Wallet",
+                action: "WALLET_UNLOCKED",
+                oldValues: null,
+                newValues: null,
+                userId: null,
+                ip: "system");
             await _uow.AuditLogs.AddAsync(audit, ct);
             await _uow.SaveChangesAsync(ct);
 

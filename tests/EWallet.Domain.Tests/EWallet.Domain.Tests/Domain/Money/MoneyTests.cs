@@ -1,4 +1,9 @@
-namespace EWallet.Domain.Tests.Domain.Money;
+using EWallet.Domain.Exceptions;
+using EWallet.Domain.ValueObjects;
+using FluentAssertions;
+using Xunit;
+
+namespace EWallet.Domain.Tests.Domain.ValueObjects;
 
 public sealed class MoneyTests
 {
@@ -10,7 +15,7 @@ public sealed class MoneyTests
     public void Constructor_NegativeAmount_ThrowsDomainException()
     {
         // Act
-        var act = () => new Money(-1m, "USD");
+        var act = () => new EWallet.Domain.ValueObjects.Money(-1m, "USD");
 
         // Assert
         act.Should().Throw<DomainException>()
@@ -25,7 +30,7 @@ public sealed class MoneyTests
     public void Constructor_RoundsToTwoDecimalPlacesAwayFromZero()
     {
         // Act
-        var money = new Money(10.505m, "USD");
+        var money = new EWallet.Domain.ValueObjects.Money(10.505m, "USD");
 
         // Assert
         money.Amount.Should().Be(10.51m);
@@ -34,7 +39,7 @@ public sealed class MoneyTests
     [Fact]
     public void Constructor_ValidAmount_SetsAmount()
     {
-        var money = new Money(10m, "USD");
+        var money = new EWallet.Domain.ValueObjects.Money(10m, "USD");
         money.Amount.Should().Be(10m);
     }
 
@@ -45,14 +50,14 @@ public sealed class MoneyTests
     [Fact]
     public void IsZero_WhenAmountIsZero_ReturnsTrue()
     {
-        var money = new Money(0m, "USD");
+        var money = new EWallet.Domain.ValueObjects.Money(0m, "USD");
         money.IsZero.Should().BeTrue();
     }
 
     [Fact]
     public void IsZero_WhenAmountIsPositive_ReturnsFalse()
     {
-        var money = new Money(1m, "USD");
+        var money = new EWallet.Domain.ValueObjects.Money(1m, "USD");
         money.IsZero.Should().BeFalse();
     }
 

@@ -32,7 +32,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<AuthResp
 
         try
         {
-            var user = await _uow.Users.FindByEmailAsync(request.Email, ct);
+            var user = await _uow.Users.GetByEmailAsync(request.Email, ct);
             if (user is null)
                 return Result<AuthResponse>.Failure("Invalid credentials.", ErrorCodes.UserNotFound);
 

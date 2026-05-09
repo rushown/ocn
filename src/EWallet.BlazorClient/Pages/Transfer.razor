@@ -32,17 +32,17 @@
                     Transfer Info
                 </MudText>
 
-                <MudList Dense="true">
-                    <MudListItem Icon="@Icons.Material.Filled.Speed" IconColor="Color.Primary">
+                <MudList T="string" Dense="true">
+                    <MudListItem T="string" Icon="@Icons.Material.Filled.Speed" IconColor="Color.Primary">
                         <MudText Typo="Typo.body2">Instant transfers between EWallet accounts</MudText>
                     </MudListItem>
-                    <MudListItem Icon="@Icons.Material.Filled.MoneyOff" IconColor="Color.Success">
+                    <MudListItem T="string" Icon="@Icons.Material.Filled.MoneyOff" IconColor="Color.Success">
                         <MudText Typo="Typo.body2">Zero fees in this phase</MudText>
                     </MudListItem>
-                    <MudListItem Icon="@Icons.Material.Filled.Security" IconColor="Color.Info">
+                    <MudListItem T="string" Icon="@Icons.Material.Filled.Security" IconColor="Color.Info">
                         <MudText Typo="Typo.body2">OTP required for transfers over $500</MudText>
                     </MudListItem>
-                    <MudListItem Icon="@Icons.Material.Filled.Replay" IconColor="Color.Warning">
+                    <MudListItem T="string" Icon="@Icons.Material.Filled.Replay" IconColor="Color.Warning">
                         <MudText Typo="Typo.body2">Idempotent — safe to retry on network errors</MudText>
                     </MudListItem>
                 </MudList>

@@ -12,7 +12,7 @@ public sealed class AuditLogRepository : BaseRepository<AuditLog>, IAuditLogRepo
     public async Task<IReadOnlyList<AuditLog>> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
         => await _dbSet
             .AsNoTracking()
-            .Where(a => a.UserId == userId)
-            .OrderByDescending(a => a.CreatedAt)
+            .Where(a => a.PerformedByUserId == userId)
+            .OrderByDescending(a => a.Timestamp)
             .ToListAsync(ct);
 }

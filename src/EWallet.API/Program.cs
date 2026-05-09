@@ -3,11 +3,12 @@ using EWallet.API.Filters;
 using EWallet.API.Hubs;
 using EWallet.API.Middleware;
 using EWallet.API.Services;
-using EWallet.Application;
-using EWallet.Application.Common.Interfaces;
+using EWallet.Application.Common;
+using EWallet.Application.Interfaces;
 using EWallet.Infrastructure;
 using EWallet.Infrastructure.BackgroundJobs;
 using Hangfire;
+using Microsoft.AspNetCore.ResponseCompression;
 using Serilog;
 
 // ─── Bootstrap logger (before DI is available) ───────────────────────────────
@@ -31,7 +32,7 @@ try
 
     // ─── Application & Infrastructure layers ─────────────────────────────────
     builder.Services.AddApplication();
-    builder.Services.AddInfrastructure(builder.Configuration);
+    builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 
     // ─── Auth ─────────────────────────────────────────────────────────────────
     builder.Services.AddJwtAuthentication(builder.Configuration);
@@ -45,20 +46,22 @@ try
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerWithJwt();
     builder.Services.AddRateLimiting();
+    builder.Services.AddResponseCompression(options =>
+    {
+        options.EnableForHttps = true;
+        options.Providers.Add<BrotliCompressionProvider>();
+        options.Providers.Add<GzipCompressionProvider>();
+    });
 
     // Exception handling (ASP.NET 8 IExceptionHandler)
     builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
     builder.Services.AddProblemDetails();
 
-    // ─── SignalR with Redis backplane ─────────────────────────────────────────
+    // ─── SignalR ─────────────────────────────────────────────────────────────
     var redisConn = builder.Configuration.GetConnectionString("Redis")
         ?? throw new InvalidOperationException("Redis connection string is required.");
 
-    builder.Services.AddSignalR()
-        .AddStackExchangeRedis(redisConn, opts =>
-        {
-            opts.Configuration.ChannelPrefix = RedisChannel.Literal("ewallet");
-        });
+    builder.Services.AddSignalR();
 
     // Real-time notification service
     builder.Services.AddScoped<IWalletNotificationService, WalletNotificationService>();
@@ -90,7 +93,10 @@ try
     app.UseSerilogRequestLogging();
     app.UseExceptionHandler();
     app.UseRequestLogging();       // custom correlation ID + security headers
+    if (!app.Environment.IsDevelopment())
+        app.UseHsts();
     app.UseHttpsRedirection();
+    app.UseResponseCompression();
     app.UseCors("BlazorClient");
     app.UseAuthentication();
     app.UseAuthorization();
@@ -124,7 +130,7 @@ try
     {
         RecurringJob.AddOrUpdate<TransactionCleanupJob>(
             "transaction-cleanup",
-            job => job.Execute(),
+            job => job.ExecuteAsync(CancellationToken.None),
             Cron.Daily(2)); // 02:00 UTC daily
     }
 

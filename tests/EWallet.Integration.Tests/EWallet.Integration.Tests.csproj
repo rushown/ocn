@@ -17,6 +17,9 @@
     </PackageReference>
     <PackageReference Include="FluentAssertions" Version="6.12.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.0" />
+    <PackageReference Include="Npgsql" Version="8.0.3" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.0" />
     <PackageReference Include="Testcontainers.PostgreSql" Version="3.7.0" />
     <PackageReference Include="Testcontainers.Redis" Version="3.7.0" />
     <PackageReference Include="Respawn" Version="6.2.1" />
@@ -28,8 +31,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Reference the API / host project -->
-    <!-- <ProjectReference Include="..\EWallet.Api\EWallet.Api.csproj" /> -->
+    <ProjectReference Include="..\..\src\EWallet.API\EWallet.API.csproj" />
+    <ProjectReference Include="..\..\src\EWallet.Application\EWallet.Application.csproj" />
+    <ProjectReference Include="..\..\src\EWallet.Infrastructure\EWallet.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\EWallet.Domain\EWallet.Domain.csproj" />
   </ItemGroup>
 
 </Project>

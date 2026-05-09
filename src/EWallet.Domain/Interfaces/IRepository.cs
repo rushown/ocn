@@ -1,4 +1,5 @@
 using EWallet.Domain.Entities;
+using EWallet.Domain.Enums;
 
 namespace EWallet.Domain.Interfaces;
 
@@ -47,6 +48,15 @@ public interface ITransactionRepository : IRepository<Transaction>
     /// <summary>Returns the transaction with the given <paramref name="key"/>, or <c>null</c> if none exists.</summary>
     Task<Transaction?> GetByIdempotencyKeyAsync(string key, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns a page of transactions for <paramref name="walletId"/> plus the total count.
+    /// </summary>
+    Task<(IReadOnlyList<Transaction> Transactions, int TotalCount)> GetPagedByWalletIdAsync(
+        Guid walletId,
+        int page,
+        int size,
+        CancellationToken ct = default);
+
     /// <summary>Returns the total debited amount for <paramref name="walletId"/> on <paramref name="date"/> (UTC date only).</summary>
     Task<decimal> GetDailyDebitSumAsync(Guid walletId, DateTime date, CancellationToken ct = default);
 }
@@ -59,6 +69,12 @@ public interface IUserRepository : IRepository<User>
 
     /// <summary>Returns the user who currently holds <paramref name="token"/> as their refresh token, or <c>null</c>.</summary>
     Task<User?> GetByRefreshTokenAsync(string token, CancellationToken ct = default);
+
+    /// <summary>
+    /// Validates an OTP for <paramref name="userId"/> and <paramref name="purpose"/>.
+    /// Implementations should mark a successfully validated OTP as used (consumed).
+    /// </summary>
+    Task<bool> ValidateOtpAsync(Guid userId, string code, OtpPurpose purpose, CancellationToken ct = default);
 }
 
 /// <summary>Repository contract for <see cref="AuditLog"/> entities.</summary>

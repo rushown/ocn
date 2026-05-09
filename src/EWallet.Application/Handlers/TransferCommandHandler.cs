@@ -65,7 +65,7 @@ public class TransferCommandHandler : IRequestHandler<TransferCommand, Result<Tr
             }
 
             // 2. Validate sender owns a wallet
-            var senderWallet = await _uow.Wallets.FindByUserIdAsync(request.SenderUserId, ct);
+            var senderWallet = await _uow.Wallets.GetByUserIdAsync(request.SenderUserId, ct);
             if (senderWallet is null)
                 return Result<TransactionDto>.Failure("Sender wallet not found.", ErrorCodes.WalletNotFound);
 
@@ -78,7 +78,7 @@ public class TransferCommandHandler : IRequestHandler<TransferCommand, Result<Tr
                 return Result<TransactionDto>.Failure("User not found.", ErrorCodes.UserNotFound);
 
             var dailyLimit = DailyLimits.GetValueOrDefault(user.KycLevel, 500m);
-            var dailySpent = await _uow.Transactions.GetDailyTransferTotalAsync(senderWallet.Id, DateTime.UtcNow.Date, ct);
+            var dailySpent = await _uow.Transactions.GetDailyDebitSumAsync(senderWallet.Id, DateTime.UtcNow.Date, ct);
             if (dailySpent + request.Amount > dailyLimit)
                 return Result<TransactionDto>.Failure("Daily transfer limit exceeded.", ErrorCodes.DailyLimitExceeded);
 
@@ -88,9 +88,12 @@ public class TransferCommandHandler : IRequestHandler<TransferCommand, Result<Tr
                 if (string.IsNullOrWhiteSpace(request.OtpCode))
                     return Result<TransactionDto>.Failure("OTP is required for transfers above $500.", ErrorCodes.InvalidOtp);
 
-                var otpValid = await _uow.Users.ValidateOtpAsync(request.SenderUserId, request.OtpCode, "Transfer", ct);
+                var otpValid = await _uow.Users.ValidateOtpAsync(request.SenderUserId, request.OtpCode, OtpPurpose.Transfer, ct);
                 if (!otpValid)
                     return Result<TransactionDto>.Failure("Invalid or expired OTP.", ErrorCodes.InvalidOtp);
+
+                // Persist OTP consumption
+                await _uow.SaveChangesAsync(ct);
             }
 
             // 5. For large transfers use pessimistic locking to prevent race conditions
@@ -130,16 +133,30 @@ public class TransferCommandHandler : IRequestHandler<TransferCommand, Result<Tr
                 walletId: senderWallet.Id,
                 amount: money,
                 type: TransactionType.Transfer,
-                idempotencyKey: ...,
-                description: ...);
+                idempotencyKey: request.IdempotencyKey,
+                description: request.Description);
+
+            transaction.SetTransferParties(senderWallet.Id, receiverWallet.Id);
 
             transaction.Complete();
 
             // 10. Write AuditLog entries for both wallets
-            var auditSender = AuditLog.Create(senderWallet.Id, "TRANSFER_DEBIT",
-                $"Transferred {money} to wallet {receiverWallet.Id}. TxId={transaction.Id}");
-            var auditReceiver = AuditLog.Create(receiverWallet.Id, "TRANSFER_CREDIT",
-                $"Received {money} from wallet {senderWallet.Id}. TxId={transaction.Id}");
+            var auditSender = AuditLog.Create(
+                entityId: senderWallet.Id,
+                entityType: "Wallet",
+                action: "TRANSFER_DEBIT",
+                oldValues: null,
+                newValues: $"{{\"amount\":\"{money}\",\"toWalletId\":\"{receiverWallet.Id}\",\"txId\":\"{transaction.Id}\"}}",
+                userId: request.SenderUserId,
+                ip: "system");
+            var auditReceiver = AuditLog.Create(
+                entityId: receiverWallet.Id,
+                entityType: "Wallet",
+                action: "TRANSFER_CREDIT",
+                oldValues: null,
+                newValues: $"{{\"amount\":\"{money}\",\"fromWalletId\":\"{senderWallet.Id}\",\"txId\":\"{transaction.Id}\"}}",
+                userId: request.SenderUserId,
+                ip: "system");
 
             await _uow.Transactions.AddAsync(transaction, ct);
             await _uow.AuditLogs.AddAsync(auditSender, ct);

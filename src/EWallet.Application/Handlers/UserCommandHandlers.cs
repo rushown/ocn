@@ -3,6 +3,7 @@ using EWallet.Application.Commands;
 using EWallet.Application.Common;
 using EWallet.Application.DTOs;
 using EWallet.Application.Interfaces;
+using EWallet.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -125,10 +126,14 @@ public class VerifyOtpCommandHandler : IRequestHandler<VerifyOtpCommand, Result<
     {
         try
         {
-            var isValid = await _uow.Users.ValidateOtpAsync(request.UserId, request.Code, request.Purpose, ct);
+            if (!Enum.TryParse<OtpPurpose>(request.Purpose, ignoreCase: true, out var purpose))
+                return Result<bool>.Failure("Unknown OTP purpose.", ErrorCodes.InvalidOtp);
+
+            var isValid = await _uow.Users.ValidateOtpAsync(request.UserId, request.Code, purpose, ct);
             if (!isValid)
                 return Result<bool>.Failure("Invalid or expired OTP.", ErrorCodes.InvalidOtp);
 
+            await _uow.SaveChangesAsync(ct);
             return Result<bool>.Success(true);
         }
         catch (Exception ex)

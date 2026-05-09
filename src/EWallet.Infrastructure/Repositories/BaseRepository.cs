@@ -27,11 +27,15 @@ public abstract class BaseRepository<T> : IRepository<T> where T : BaseEntity
 
     /// <inheritdoc />
     public virtual async Task<T?> GetByIdAsync(Guid id, CancellationToken ct = default)
-        => await _dbSet.FirstOrDefaultAsync(e => e.Id == id, ct);
+        => await _dbSet
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == id, ct);
 
     /// <inheritdoc />
     public virtual async Task<IReadOnlyList<T>> GetAllAsync(CancellationToken ct = default)
-        => await _dbSet.ToListAsync(ct);
+        => await _dbSet
+            .AsNoTracking()
+            .ToListAsync(ct);
 
     /// <inheritdoc />
     public virtual async Task AddAsync(T entity, CancellationToken ct = default)

@@ -1,9 +1,8 @@
-using EWallet.Application.Transactions.Commands;
-using EWallet.Application.Transactions.DTOs;
-using EWallet.Application.Transactions.Queries;
-using EWallet.Application.Wallet.DTOs;
-using EWallet.Application.Wallet.Queries;
-using EWallet.Application.Common.Models;
+using EWallet.API.Models;
+using EWallet.Application.Commands;
+using EWallet.Application.Common;
+using EWallet.Application.DTOs;
+using EWallet.Application.Queries;
 using EWallet.API.Filters;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -48,12 +47,12 @@ public class WalletController : ControllerBase
     [ProducesResponseType(typeof(TransactionDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<TransactionDto>> Deposit(
-        [FromBody] DepositRequest request,
+        [FromBody] EWallet.API.Models.DepositRequest request,
         [FromHeader(Name = "Idempotency-Key")] string idempotencyKey,
         CancellationToken ct)
     {
         var userId = GetCurrentUserId();
-        var command = new DepositCommand(userId, request.Amount, request.Currency, idempotencyKey);
+        var command = new DepositCommand(userId, request.Amount, request.Currency, request.ExternalRef, idempotencyKey);
         var result = await _mediator.Send(command, ct);
 
         return result.IsSuccess
@@ -72,12 +71,12 @@ public class WalletController : ControllerBase
     [ProducesResponseType(typeof(TransactionDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<TransactionDto>> Withdraw(
-        [FromBody] WithdrawRequest request,
+        [FromBody] EWallet.API.Models.WithdrawRequest request,
         [FromHeader(Name = "Idempotency-Key")] string idempotencyKey,
         CancellationToken ct)
     {
         var userId = GetCurrentUserId();
-        var command = new WithdrawCommand(userId, request.Amount, request.Currency, idempotencyKey);
+        var command = new WithdrawCommand(userId, request.Amount, request.Currency, request.ExternalRef, idempotencyKey);
         var result = await _mediator.Send(command, ct);
 
         return result.IsSuccess
@@ -97,7 +96,7 @@ public class WalletController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<TransactionDto>> Transfer(
-        [FromBody] TransferRequest request,
+        [FromBody] EWallet.API.Models.TransferRequest request,
         [FromHeader(Name = "Idempotency-Key")] string idempotencyKey,
         CancellationToken ct)
     {
@@ -107,6 +106,7 @@ public class WalletController : ControllerBase
             request.RecipientWalletId,
             request.Amount,
             request.Currency,
+            request.Description,
             request.OtpCode,
             idempotencyKey);
 
@@ -133,8 +133,14 @@ public class WalletController : ControllerBase
         var userId = GetCurrentUserId();
         var query = new GetTransactionHistoryQuery(userId, page, pageSize);
         var result = await _mediator.Send(query, ct);
-
-        return Ok(result);
+        return result.IsSuccess
+            ? Ok(result.Value)
+            : BadRequest(new ProblemDetails
+            {
+                Title = result.Error,
+                Detail = result.ErrorCode,
+                Status = StatusCodes.Status400BadRequest
+            });
     }
 
     /// <summary>Get a single transaction by ID</summary>
