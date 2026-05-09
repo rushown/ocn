@@ -91,4 +91,25 @@ public class LoginCommandHandlerTests
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain("disabled");
     }
+
+    [Fact]
+    public async Task Handle_WrongPassword_ReturnsFailure_AndDoesNotSaveChanges()
+    {
+        // Arrange
+        var user = WalletTestData.CreateActiveUser(ValidEmail, passwordHash: "hash");
+
+        _users.Setup(u => u.GetByEmailAsync(ValidEmail, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(user);
+        _passwordHasher.Setup(p => p.Verify("Wrong@123!", "hash")).Returns(false);
+
+        // Act
+        var result = await _handler.Handle(
+            new LoginCommand(ValidEmail, "Wrong@123!"),
+            CancellationToken.None);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("Invalid credentials");
+        _uow.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
 }
